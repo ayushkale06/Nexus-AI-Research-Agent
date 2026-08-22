@@ -78,3 +78,8 @@ This section demonstrates the integration of multiple external tools and APIs dy
 
 ### 5. Final Formatted Report
 ![Task Complete Output](task2_5.png)
+
+## Task 3: Multi-Agent Architecture
+This section demonstrates two specialized agents collaborating. Agent-Scout acts as the researcher gathering raw data using tools, and Agent-Lead acts as the executive synthesizer formulating the final report.
+
+![Multi-Agent Orchestration](task3_1.png)
