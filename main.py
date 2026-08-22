@@ -300,8 +300,12 @@ html_content = """
     </div>
 
     <script>
-        // TASK 4: Session Generation
-        const SESSION_ID = "sess_" + Math.random().toString(36).substr(2, 9);
+        // TASK 4: Session Persistence
+        let SESSION_ID = localStorage.getItem('nexus_session_id');
+        if (!SESSION_ID) {
+            SESSION_ID = "sess_" + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('nexus_session_id', SESSION_ID);
+        }
         
         // --- Tools Menu Logic ---
         let currentForcedTool = null;
