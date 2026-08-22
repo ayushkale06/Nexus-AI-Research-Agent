@@ -64,8 +64,17 @@ This section demonstrates the core ReAct reasoning loop, live thought streaming,
 ## Task 2: External Integrations
 This section demonstrates the integration of multiple external tools and APIs dynamically chosen by the ReAct agent based on the query.
 
+### 1. Multi-Tool API Selection
 ![Tool Selection](task2_1.png)
+
+### 2. Live Agent Streaming
 ![Streaming Reasoning](task2_2.png)
+
+### 3. Agent Synthesis & UI
 ![Agent Synthesis](task2_3.png)
+
+### 4. Dynamic GitHub API Search
 ![Executing External Search](task2_4.png)
+
+### 5. Final Formatted Report
 ![Task Complete Output](task2_5.png)
