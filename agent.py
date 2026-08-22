@@ -19,7 +19,9 @@ class MemoryManager:
         if os.path.exists(self.filepath):
             try:
                 with open(self.filepath, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return data
             except Exception:
                 pass
         return {}
