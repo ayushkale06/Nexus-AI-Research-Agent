@@ -45,4 +45,11 @@ To provide a stunning user experience, Nexus.AI features a custom glassmorphism 
 3. Enter a research query in the terminal and watch Nexus.AI investigate!
 
 ## Screenshots / Demo
-![Nexus.AI Interface](screenshot.png)
+### 1. Welcome Screen
+![Welcome Screen](welcome.png)
+
+### 2. Live Agent Reasoning
+![Live Reasoning](reasoning.png)
+
+### 3. Final Output
+![Result](result.png)
