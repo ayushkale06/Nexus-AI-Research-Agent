@@ -88,7 +88,7 @@ This section demonstrates two specialized agents collaborating. Agent-Scout acts
 This section demonstrates advanced session-based memory architecture. Nexus.AI dynamically stores short-term conversational context and compresses long-term interactions using an LLM to prevent context-window overflow. The UI features a flashing 'Memory Core' when past data is retrieved.
 
 ### 1. Multi-Turn Conversation UI
-![Multi-Turn Memory](assets/memory_1.png)
+![Multi-Turn Memory](memory_1.png)
 
 ### 2. Contextual Memory Retrieval
-![Memory Retrieval](assets/memory_2.png)
+![Memory Retrieval](memory_2.png)
