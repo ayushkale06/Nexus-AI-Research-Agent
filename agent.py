@@ -9,10 +9,11 @@ from tools import AVAILABLE_TOOLS
 load_dotenv()
 
 class MemoryManager:
-    """Handles short-term and long-term memory persistence across agent sessions."""
-    def __init__(self, filepath="agent_memory.json"):
+    """Handles short-term and long-term memory persistence with Rolling Summary Compression and Session IDs."""
+    def __init__(self, client, filepath="agent_memory.json"):
+        self.client = client
         self.filepath = filepath
-        self.memory = self._load()
+        self.db = self._load() # Format: {"session_id": {"history": [], "summary": ""}}
 
     def _load(self):
         if os.path.exists(self.filepath):
@@ -21,28 +22,51 @@ class MemoryManager:
                     return json.load(f)
             except Exception:
                 pass
-        return []
+        return {}
 
-    def get_context_string(self, limit=2) -> str:
-        """Returns the last 'limit' conversations as a context string."""
-        if not self.memory:
-            return "No previous conversation history."
-        
-        recent = self.memory[-limit:]
-        context = "--- PREVIOUS CONVERSATION CONTEXT ---\n"
-        for i, entry in enumerate(recent):
-            context += f"Previous Query {i+1}: {entry['task']}\n"
-            # Truncate answer slightly to avoid exploding the context window
-            ans = entry['answer']
-            if len(ans) > 500: ans = ans[:500] + "...\n(truncated)"
-            context += f"Previous Answer {i+1}: {ans}\n\n"
-        context += "--------------------------------------\n"
-        return context
-
-    def add_entry(self, task: str, answer: str):
-        self.memory.append({"task": task, "answer": answer})
+    def _save(self):
         with open(self.filepath, "w", encoding="utf-8") as f:
-            json.dump(self.memory, f, indent=4)
+            json.dump(self.db, f, indent=4)
+
+    def get_context_string(self, session_id: str) -> tuple:
+        """Returns (context_string, history_count, has_summary)"""
+        session = self.db.get(session_id, {"history": [], "summary": ""})
+        if not session["history"] and not session["summary"]:
+            return "No previous conversation history.", 0, False
+        
+        context = "--- PREVIOUS CONVERSATION CONTEXT ---\n"
+        if session["summary"]:
+            context += f"COMPRESSED LONG-TERM MEMORY:\n{session['summary']}\n\n"
+        
+        for i, entry in enumerate(session["history"]):
+            context += f"Recent Query {i+1}: {entry['task']}\n"
+            ans = entry['answer']
+            if len(ans) > 400: ans = ans[:400] + "...\n(truncated)"
+            context += f"Recent Answer {i+1}: {ans}\n\n"
+        context += "--------------------------------------\n"
+        return context, len(session["history"]), bool(session["summary"])
+
+    def add_entry(self, session_id: str, task: str, answer: str):
+        if session_id not in self.db:
+            self.db[session_id] = {"history": [], "summary": ""}
+        
+        self.db[session_id]["history"].append({"task": task, "answer": answer})
+        
+        # ROLLING COMPRESSION: If history > 2 items, compress the oldest into the summary
+        if len(self.db[session_id]["history"]) > 2:
+            oldest = self.db[session_id]["history"].pop(0)
+            self._compress_memory(session_id, oldest)
+            
+        self._save()
+
+    def _compress_memory(self, session_id: str, old_entry: dict):
+        current_summary = self.db[session_id]["summary"]
+        prompt = f"Update this memory summary: '{current_summary}'. Integrate this new past interaction -> User asked: '{old_entry['task']}'. AI replied: '{old_entry['answer'][:300]}'. Keep the final summary extremely dense and concise."
+        try:
+            res = self.client.models.generate_content(model="gemini-3.5-flash-lite", contents=prompt)
+            self.db[session_id]["summary"] = res.text.strip()
+        except Exception:
+            pass # Ignore rate limits for background compression
 
 def get_researcher_prompt(force_tool: str = None) -> str:
     base_prompt = """You are 'Agent-Scout', an autonomous Research Data Gatherer.
@@ -187,11 +211,17 @@ class MultiAgentTeam:
         self.lead = SynthesizerAgent(self.client, self.model_name)
         
         # TASK 4: Initialize Memory Management
-        self.memory_manager = MemoryManager()
+        self.memory_manager = MemoryManager(self.client)
 
-    def run_stream(self, task: str, max_turns: int = 5, force_tool: str = None):
+    def run_stream(self, task: str, session_id: str, max_turns: int = 5, force_tool: str = None):
         # 0. Retrieve Context (Long-term / Short-term memory)
-        context = self.memory_manager.get_context_string(limit=2)
+        context, count, has_summary = self.memory_manager.get_context_string(session_id)
+        
+        # Yield a special memory notification for the frontend UI visualizer
+        msg = f"Retrieved {count} short-term memories"
+        if has_summary: msg += " and 1 compressed core memory."
+        yield "memory", msg
+        
         enriched_task = f"{context}\nCurrent User Query: {task}"
         
         raw_data = ""
@@ -216,11 +246,11 @@ class MultiAgentTeam:
                 final_answer = text
                 
         # 3. Store the result in Memory
-        self.memory_manager.add_entry(task, final_answer)
+        self.memory_manager.add_entry(session_id, task, final_answer)
 
 if __name__ == "__main__":
     team = MultiAgentTeam()
-    for update_type, text in team.run_stream("Who is the CEO of OpenAI?"):
+    for update_type, text in team.run_stream("Who is the CEO of OpenAI?", "test_session_1"):
         if update_type == "log":
             print(text)
         elif update_type == "answer":

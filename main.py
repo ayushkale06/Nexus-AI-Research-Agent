@@ -81,6 +81,13 @@ html_content = """
         .user .bubble { border-radius: 20px 4px 20px 20px; margin-left: auto; background: rgba(2, 132, 199, 0.08); border-color: rgba(56, 189, 248, 0.2); box-shadow: 0 15px 35px rgba(0,0,0,0.3);}
         .agent .bubble { border-radius: 4px 20px 20px 20px; border: 1px solid rgba(16, 185, 129, 0.4); border-left: 4px solid var(--accent); background: linear-gradient(135deg, rgba(2, 26, 16, 0.9) 0%, rgba(16, 185, 129, 0.1) 100%); box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 20px rgba(16,185,129,0.15), inset 0 0 40px rgba(16,185,129,0.05); }
 
+        /* Memory Core Visualizer */
+        .memory-core { position: absolute; top: 30px; right: 40px; display: flex; align-items: center; gap: 10px; background: rgba(0, 15, 8, 0.8); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 20px; font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 1px; box-shadow: 0 0 20px rgba(0,0,0,0.5); backdrop-filter: blur(10px); transition: all 0.3s; z-index: 100;}
+        .memory-core.active { border-color: var(--accent-glow); box-shadow: 0 0 20px rgba(16,185,129,0.6), inset 0 0 10px rgba(16,185,129,0.2); text-shadow: 0 0 10px rgba(16,185,129,0.5); transform: scale(1.05); }
+        .memory-pulse { width: 8px; height: 8px; background: rgba(16,185,129,0.3); border-radius: 50%; box-shadow: 0 0 5px rgba(16,185,129,0.2); }
+        .memory-core.active .memory-pulse { background: var(--accent-glow); box-shadow: 0 0 10px var(--accent-glow); animation: flash 0.5s infinite alternate; }
+        @keyframes flash { from { opacity: 0.5; } to { opacity: 1; } }
+
         /* Hacker/Terminal Reasoning Panel */
         .reasoning-panel { margin-bottom: 28px; border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; background-color: rgba(0,5,2,0.9); overflow: hidden; box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(16,185,129,0.15); backdrop-filter: blur(5px); position: relative; }
         .reasoning-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(16,185,129,0.04) 2px, rgba(16,185,129,0.04) 4px); pointer-events: none; z-index: 1;}
@@ -582,13 +589,13 @@ async def get_frontend():
     return HTMLResponse(html_content)
 
 @app.get("/stream")
-async def stream_agent(task: str, force_tool: str = None):
+async def stream_agent(task: str, session_id: str, force_tool: str = None):
     """Executes the agent and streams the thought process back to the frontend live"""
     agent = MultiAgentTeam()
     
     async def event_generator():
         # Iterate over the agent's live updates
-        for update_type, text in agent.run_stream(task, max_turns=5, force_tool=force_tool):
+        for update_type, text in agent.run_stream(task, session_id, max_turns=5, force_tool=force_tool):
             # Format as Server-Sent Events (SSE)
             data = json.dumps({"type": update_type, "text": text})
             yield f"data: {data}\n\n"
