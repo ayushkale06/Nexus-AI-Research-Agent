@@ -139,6 +139,13 @@ html_content = """
         @keyframes matrixScan { 0% { top: -100%; } 100% { top: 100%; } }
         @keyframes rotateBorder { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         
+        /* Memory Core Visualizer */
+        .memory-core { position: absolute; top: 30px; right: 40px; display: flex; align-items: center; gap: 10px; background: rgba(0, 15, 8, 0.8); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 20px; font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 1px; box-shadow: 0 0 20px rgba(0,0,0,0.5); backdrop-filter: blur(10px); transition: all 0.3s; z-index: 100; opacity: 0; pointer-events: none;}
+        .memory-core.active { opacity: 1; border-color: var(--accent-glow); box-shadow: 0 0 20px rgba(16,185,129,0.6), inset 0 0 10px rgba(16,185,129,0.2); text-shadow: 0 0 10px rgba(16,185,129,0.5); transform: scale(1.05); }
+        .memory-pulse { width: 8px; height: 8px; background: rgba(16,185,129,0.3); border-radius: 50%; box-shadow: 0 0 5px rgba(16,185,129,0.2); }
+        .memory-core.active .memory-pulse { background: var(--accent-glow); box-shadow: 0 0 10px var(--accent-glow); animation: flash 0.5s infinite alternate; }
+        @keyframes flash { from { opacity: 0.5; } to { opacity: 1; } }
+        
         /* Holographic Welcome Screen */
         .welcome { text-align: center; margin: auto; padding-top: 5vh; max-width: 1000px; z-index: 2; position: relative; }
         
@@ -215,6 +222,11 @@ html_content = """
         <span class="badge">System Online</span>
     </div>
     
+    <div class="memory-core" id="memory-core">
+        <div class="memory-pulse"></div>
+        <span id="memory-text">MEMORY: STANDBY</span>
+    </div>
+    
     <div class="chat-container" id="chat">
         <div class="welcome" id="welcome-msg">
             <h1 class="hologram-text" id="typed-text">NEXUS.AI</h1>
@@ -288,6 +300,9 @@ html_content = """
     </div>
 
     <script>
+        // TASK 4: Session Generation
+        const SESSION_ID = "sess_" + Math.random().toString(36).substr(2, 9);
+        
         // --- Tools Menu Logic ---
         let currentForcedTool = null;
 
@@ -516,7 +531,7 @@ html_content = """
             setTimeout(moveRobotToThinking, 800);
 
             try {
-                let url = '/stream?task=' + encodeURIComponent(text);
+                let url = '/stream?task=' + encodeURIComponent(text) + '&session_id=' + SESSION_ID;
                 if (currentForcedTool) url += '&force_tool=' + encodeURIComponent(currentForcedTool);
                 const response = await fetch(url);
                 const reader = response.body.getReader();
@@ -546,6 +561,15 @@ html_content = """
                                 }
                                 scrollToBottom();
                                 
+                            } else if (data.type === 'memory') {
+                                const memCore = document.getElementById('memory-core');
+                                const memText = document.getElementById('memory-text');
+                                memCore.classList.add('active');
+                                memText.innerText = "MEMORY ACTIVE: " + data.text.toUpperCase();
+                                
+                                setTimeout(() => {
+                                    memCore.classList.remove('active');
+                                }, 6000);
                             } else if (data.type === 'answer') {
                                 spinner.style.display = 'none';
                                 headerText.innerText = "SYNTHESIS COMPLETE";
