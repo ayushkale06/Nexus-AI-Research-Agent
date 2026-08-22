@@ -58,3 +58,12 @@ To provide a stunning user experience, Nexus.AI features a custom glassmorphism 
 
 ### 4. FastAPI Backend
 ![Backend Terminal](terminal.png)
+
+## Task 2: External Integrations
+This section demonstrates the integration of multiple external tools and APIs dynamically chosen by the ReAct agent based on the query.
+
+![Tool Selection](task2_1.png)
+![Streaming Reasoning](task2_2.png)
+![Agent Synthesis](task2_3.png)
+![Executing External Search](task2_4.png)
+![Task Complete Output](task2_5.png)

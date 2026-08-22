@@ -19,6 +19,7 @@ html_content = """
     <title>Nexus | Autonomous AI</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
         :root {
             --bg-dark: #000905;
@@ -45,6 +46,12 @@ html_content = """
             z-index: 0; pointer-events: none; opacity: 0.7;
         }
 
+        /* Ambient Volumetric Orbs */
+        .ambient-orb { position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.5; z-index: 0; animation: floatOrb 12s ease-in-out infinite alternate; pointer-events: none; }
+        .orb-1 { width: 500px; height: 500px; background: rgba(16, 185, 129, 0.25); top: -150px; left: -100px; }
+        .orb-2 { width: 600px; height: 600px; background: rgba(2, 132, 199, 0.15); bottom: -200px; right: -100px; animation-delay: -5s; }
+        @keyframes floatOrb { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(60px, 60px) scale(1.2); } }
+
         /* Glassmorphism Navbar */
         .navbar { display: flex; align-items: center; padding: 20px 40px; background: rgba(0,9,5,0.6); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-green); flex-shrink: 0; z-index: 10; box-shadow: 0 4px 30px rgba(16,185,129,0.1); }
         .navbar h1 { font-size: 26px; font-weight: 700; margin: 0; color: #fff; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 20px var(--accent-glow); }
@@ -61,44 +68,69 @@ html_content = """
         .chat-container::-webkit-scrollbar-track { background: transparent; }
         .chat-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; box-shadow: 0 0 10px var(--accent); }
 
-        .message-wrapper { width: 100%; max-width: 900px; display: flex; gap: 20px; margin-bottom: 40px; animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(40px) scale(0.98); padding: 0 20px; box-sizing: border-box; }
+        .message-wrapper { width: 100%; max-width: 1100px; display: flex; gap: 20px; margin-bottom: 40px; animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(40px) scale(0.98); padding: 0 20px; box-sizing: border-box; }
         .message-wrapper.user { flex-direction: row-reverse; }
         
-        .avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; font-weight: 700; background: rgba(0,0,0,0.5); border: 1px solid var(--border-green); box-shadow: 0 0 20px rgba(16,185,129,0.2); backdrop-filter: blur(10px);}
-        .user .avatar { color: #fff; border-color: rgba(255,255,255,0.3); box-shadow: 0 0 20px rgba(255,255,255,0.1);}
-        .agent .avatar { color: var(--accent-glow); border-color: var(--accent); }
+        .avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; font-weight: 700; background: rgba(0,0,0,0.5); border: 1px solid var(--border-green); box-shadow: 0 0 20px rgba(16,185,129,0.2); backdrop-filter: blur(10px); position: relative; overflow: hidden; z-index: 2;}
+        .user .avatar { color: #fff; border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); background: rgba(2, 132, 199, 0.1);}
+        .user .avatar::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.5); pointer-events: none;}
+        .agent .avatar { color: var(--accent-glow); border-color: var(--accent); box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);}
+        .agent .avatar::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.6); pointer-events: none;}
 
-        .bubble { flex: 1; max-width: 80%; padding: 22px 28px; border-radius: 16px; font-size: 15px; line-height: 1.7; font-weight: 400; background: rgba(2, 26, 16, 0.6); backdrop-filter: blur(16px); border: 1px solid var(--border-green); box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1); }
-        .user .bubble { border-radius: 20px 4px 20px 20px; margin-left: auto; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); box-shadow: 0 15px 35px rgba(0,0,0,0.3);}
-        .agent .bubble { border-radius: 4px 20px 20px 20px; border-left: 3px solid var(--accent); }
+        .bubble { flex: 1; max-width: 95%; padding: 26px 34px; border-radius: 16px; font-size: 16px; line-height: 1.8; font-weight: 400; background: rgba(2, 26, 16, 0.6); backdrop-filter: blur(16px); border: 1px solid var(--border-green); box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1); }
+        .user .bubble { border-radius: 20px 4px 20px 20px; margin-left: auto; background: rgba(2, 132, 199, 0.08); border-color: rgba(56, 189, 248, 0.2); box-shadow: 0 15px 35px rgba(0,0,0,0.3);}
+        .agent .bubble { border-radius: 4px 20px 20px 20px; border: 1px solid rgba(16, 185, 129, 0.4); border-left: 4px solid var(--accent); background: linear-gradient(135deg, rgba(2, 26, 16, 0.9) 0%, rgba(16, 185, 129, 0.1) 100%); box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 20px rgba(16,185,129,0.15), inset 0 0 40px rgba(16,185,129,0.05); }
 
         /* Hacker/Terminal Reasoning Panel */
-        .reasoning-panel { margin-bottom: 24px; border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; background-color: rgba(0,5,2,0.8); overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,0.8); backdrop-filter: blur(5px); position: relative; }
-        .reasoning-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(16,185,129,0.03) 2px, rgba(16,185,129,0.03) 4px); pointer-events: none; }
-        .reasoning-header { padding: 8px 16px; font-size: 10px; color: var(--accent-glow); background: rgba(16,185,129,0.1); display: flex; align-items: center; gap: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(16,185,129,0.2); }
-        .spinner { width: 12px; height: 12px; border: 2px solid transparent; border-top-color: var(--accent-glow); border-right-color: var(--accent-glow); border-radius: 50%; animation: spin 0.6s linear infinite; margin-left: auto; }
-        .reasoning-content { padding: 16px; font-family: 'Courier New', monospace; font-size: 13px; color: #6ee7b7; max-height: 250px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; text-shadow: 0 0 8px rgba(16,185,129,0.4); }
+        .reasoning-panel { margin-bottom: 28px; border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; background-color: rgba(0,5,2,0.9); overflow: hidden; box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(16,185,129,0.15); backdrop-filter: blur(5px); position: relative; }
+        .reasoning-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(16,185,129,0.04) 2px, rgba(16,185,129,0.04) 4px); pointer-events: none; z-index: 1;}
+        .reasoning-panel::after { content: ''; position: absolute; top: -100%; left: 0; right: 0; height: 100%; background: linear-gradient(to bottom, transparent, rgba(16,185,129,0.15) 90%, transparent); animation: matrixScan 4s linear infinite; pointer-events: none; z-index: 2;}
+        .reasoning-header { padding: 10px 18px; font-size: 11px; color: var(--accent-glow); background: rgba(16,185,129,0.15); display: flex; align-items: center; gap: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; border-bottom: 1px solid rgba(16,185,129,0.3); position: relative; z-index: 3;}
+        .spinner { width: 14px; height: 14px; border: 2px solid transparent; border-top-color: var(--accent-glow); border-right-color: var(--accent-glow); border-radius: 50%; animation: spin 0.6s linear infinite; margin-left: auto; }
+        .reasoning-content { padding: 20px; font-family: 'Courier New', monospace; font-size: 14px; color: #6ee7b7; max-height: 280px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; text-shadow: 0 0 10px rgba(16,185,129,0.5); position: relative; z-index: 3;}
+        .reasoning-content::-webkit-scrollbar { width: 6px; }
+        .reasoning-content::-webkit-scrollbar-track { background: transparent; }
+        .reasoning-content::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.6); border-radius: 4px; }
         
         /* Ultra Sleek Input Area */
         .input-container { flex-shrink: 0; width: 100%; display: flex; justify-content: center; padding: 30px 20px; background: linear-gradient(0deg, rgba(0,9,5,0.9) 0%, rgba(0,9,5,0) 100%); z-index: 10; position: relative;}
-        .input-box { width: 100%; max-width: 900px; display: flex; align-items: center; background: rgba(2, 26, 16, 0.8); border: 1px solid var(--border-green); border-radius: 16px; padding: 8px 8px 8px 24px; transition: all 0.3s; box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(16,185,129,0.05); backdrop-filter: blur(20px);}
+        .input-box { width: 100%; max-width: 1100px; display: flex; align-items: center; background: rgba(2, 26, 16, 0.8); border: 1px solid var(--border-green); border-radius: 16px; padding: 8px 8px 8px 16px; transition: all 0.3s; box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(16,185,129,0.05); backdrop-filter: blur(20px); position: relative; overflow: visible;}
+        .input-box::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, var(--accent), transparent, var(--accent-glow), transparent); z-index: -1; border-radius: 18px; filter: blur(10px); opacity: 0.2; animation: rotateBorder 4s linear infinite; }
+        .input-box:focus-within::before { opacity: 0.6; }
         .input-box:focus-within { border-color: var(--accent-glow); box-shadow: 0 0 30px rgba(16,185,129,0.2), inset 0 0 20px rgba(16,185,129,0.1); transform: translateY(-2px);}
+        
+        #tools-btn { background: rgba(16,185,129,0.1); border: 1px solid var(--border-green); color: var(--accent-glow); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; margin-right: 12px; flex-shrink: 0; }
+        #tools-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px var(--accent-glow); transform: rotate(90deg) scale(1.05); }
+        #tools-btn svg { stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+        
+        #tools-menu { position: absolute; bottom: 75px; left: 0; background: rgba(2, 26, 16, 0.95); border: 1px solid var(--accent); border-radius: 16px; padding: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 30px rgba(16,185,129,0.2); backdrop-filter: blur(25px); transform: translateY(10px) scale(0.95); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; gap: 10px; z-index: 100; min-width: 220px; transform-origin: bottom left; }
+        #tools-menu.show { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        .tools-menu-header { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.2); padding-bottom: 8px; }
+        .tool-item { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid transparent; transition: all 0.2s; cursor: pointer; }
+        .tool-item span { font-size: 22px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); }
+        .tool-item strong { color: var(--text-main); font-size: 14px; display: block; letter-spacing: 0.5px; }
+        .tool-item small { color: var(--accent-glow); font-size: 11px; }
+        .tool-item:hover { background: rgba(16,185,129,0.1); border-color: var(--border-green); transform: translateX(5px); }
+        .tool-item.active-tool { background: rgba(16,185,129,0.2); border-color: var(--accent-glow); box-shadow: 0 0 15px rgba(16,185,129,0.3); }
+
         .input-box input { flex: 1; background: transparent; border: none; color: white; font-size: 16px; font-weight: 400; outline: none; font-family: 'Space Grotesk', sans-serif; padding: 14px 0; letter-spacing: 0.5px;}
         .input-box input::placeholder { color: rgba(236,253,245,0.3); }
-        .input-box button { background: var(--accent); color: #000; border: none; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; margin-left: 10px; flex-shrink: 0; box-shadow: 0 0 20px rgba(16,185,129,0.4);}
-        .input-box button:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(52,211,153,0.8); background: #fff;}
-        .input-box button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; margin-left: -2px; }
+        .input-box button.send-btn { background: var(--accent); color: #000; border: none; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; margin-left: 10px; flex-shrink: 0; box-shadow: 0 0 20px rgba(16,185,129,0.4);}
+        .input-box button.send-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(52,211,153,0.8); background: #fff;}
+        .input-box button.send-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; margin-left: -2px; }
         
         /* Markdown */
         .markdown-body h1, .markdown-body h2, .markdown-body h3 { margin-top: 0; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
         .markdown-body h1 { font-size: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 24px; color: var(--accent-glow); text-shadow: 0 0 15px rgba(16,185,129,0.3);}
-        .markdown-body p, .markdown-body li { color: #d1fae5; font-size: 15px; font-weight: 300; line-height: 1.8; letter-spacing: 0.3px;}
+        .markdown-body p, .markdown-body li { color: #d1fae5; font-size: 16px; font-weight: 300; line-height: 1.8; letter-spacing: 0.3px;}
         .markdown-body ul { padding-left: 20px; margin-bottom: 24px; }
         .markdown-body strong { color: #fff; font-weight: 600; text-shadow: 0 0 10px rgba(255,255,255,0.3);}
         
         /* Animations */
         @keyframes slideUp { to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes matrixScan { 0% { top: -100%; } 100% { top: 100%; } }
+        @keyframes rotateBorder { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         
         /* Holographic Welcome Screen */
         .welcome { text-align: center; margin: auto; padding-top: 5vh; max-width: 1000px; z-index: 2; position: relative; }
@@ -120,12 +152,13 @@ html_content = """
         
         /* Cyberpunk Suggestion Chips */
         .suggestions { display: flex; gap: 16px; justify-content: center; margin-top: 60px; flex-wrap: wrap; opacity: 0; transition: opacity 1s ease-in; }
-        .chip { background: rgba(0,0,0,0.4); border: 1px solid var(--border-green); color: var(--accent-glow); padding: 14px 28px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase; letter-spacing: 2px; position: relative; overflow: hidden;}
+        .chip { background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: var(--text-main); padding: 14px 28px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 0 10px rgba(16,185,129,0.05); text-transform: uppercase; letter-spacing: 2px; position: relative; overflow: hidden;}
         .chip::before { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(16,185,129,0.4), transparent); transform: skewX(-20deg); transition: 0.5s; }
+        .chip:hover { border-color: var(--accent-glow); box-shadow: 0 4px 20px rgba(16,185,129,0.3), inset 0 0 15px rgba(16,185,129,0.2); transform: translateY(-3px);}
         .chip:hover::before { left: 150%; }
         .chip:hover { background: rgba(16,185,129,0.1); border-color: var(--accent-glow); transform: translateY(-4px); box-shadow: 0 10px 30px rgba(16,185,129,0.2); color: #fff; }
 
-        /* --- ROAMING REAL ROBOT CSS --- */
+        /* --- ROAMING REAL 3D ROBOT CSS --- */
         #side-robot {
             position: fixed;
             top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -135,14 +168,16 @@ html_content = """
         }
         
         #robot-img {
-            width: 140px; height: 140px;
+            width: 160px; height: 160px;
             animation: floatRobot 4s ease-in-out infinite;
             filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(16,185,129,0.4));
+            background-color: transparent;
+            pointer-events: auto; /* allow user to interact with the 3D model */
         }
 
         @keyframes floatRobot {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(2deg); }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
         }
 
         .robot-bubble {
@@ -161,6 +196,10 @@ html_content = """
     </style>
 </head>
 <body>
+    <!-- Ambient Volumetric Background Orbs -->
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
     <!-- Interactive Particle Network -->
     <canvas id="particle-canvas"></canvas>
 
@@ -171,8 +210,8 @@ html_content = """
     
     <div class="chat-container" id="chat">
         <div class="welcome" id="welcome-msg">
-            <h1 class="hologram-text" id="typed-text"></h1>
-            <p>ESTABLISH NEURAL LINK TO COMMENCE RESEARCH PROTOCOL</p>
+            <h1 class="hologram-text" id="typed-text">NEXUS.AI</h1>
+            <p id="subtitle-text"><span class="cursor"></span></p>
             
             <div class="suggestions" id="suggestions">
                 <div class="chip" onclick="setPrompt('Analyze AI healthcare startups')">Healthcare Sector</div>
@@ -184,20 +223,103 @@ html_content = """
     
     <div class="input-container">
         <div class="input-box">
+            <button id="tools-btn" title="View Connected APIs" onclick="toggleToolsMenu(event)">
+                <svg viewBox="0 0 24 24" width="20" height="20"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            
+            <div id="tools-menu">
+                <div class="tools-menu-header">Force API Mode (Click to select)</div>
+                <div class="tool-item active-tool" id="tool-auto" onclick="setForcedTool(null, this)">
+                    <span>⚡</span>
+                    <div>
+                        <strong>Auto Mode</strong>
+                        <small>AI chooses dynamically</small>
+                    </div>
+                </div>
+                <div class="tool-item" onclick="setForcedTool('wiki_search', this)">
+                    <span>🌐</span>
+                    <div>
+                        <strong>Wikipedia API</strong>
+                        <small>Only use Wikipedia</small>
+                    </div>
+                </div>
+                <div class="tool-item" onclick="setForcedTool('arxiv_search', this)">
+                    <span>📚</span>
+                    <div>
+                        <strong>ArXiv Database</strong>
+                        <small>Only search ArXiv</small>
+                    </div>
+                </div>
+                <div class="tool-item" onclick="setForcedTool('github_search', this)">
+                    <span>💻</span>
+                    <div>
+                        <strong>GitHub REST API</strong>
+                        <small>Only search GitHub</small>
+                    </div>
+                </div>
+            </div>
+
             <input type="text" id="prompt" placeholder="Initialize query sequence..." autocomplete="off" onkeypress="handleKeyPress(event)">
-            <button onclick="sendMessage()">
+            <button class="send-btn" onclick="sendMessage()">
                 <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
         </div>
     </div>
 
-    <!-- The Roaming 3D Robot -->
+    <!-- The Roaming 3D AI Core -->
     <div id="side-robot">
-        <img id="robot-img" src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f916/512.gif" alt="🤖">
+        <model-viewer id="robot-img" 
+            src="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb" 
+            autoplay 
+            auto-rotate
+            rotation-per-second="10deg"
+            camera-orbit="auto auto auto"
+            disable-zoom
+            shadow-intensity="1">
+        </model-viewer>
         <div class="robot-bubble" id="robot-bubble">Initializing...</div>
     </div>
 
     <script>
+        // --- Tools Menu Logic ---
+        let currentForcedTool = null;
+
+        function setForcedTool(toolName, element) {
+            currentForcedTool = toolName;
+            
+            // Remove active class from all
+            document.querySelectorAll('.tool-item').forEach(el => el.classList.remove('active-tool'));
+            // Add active class to clicked
+            if (element) {
+                element.classList.add('active-tool');
+            }
+            
+            // Give user feedback via robot
+            if (toolName) {
+                updateRobotMsg("Override Accepted. Forcing " + toolName, 3000);
+            } else {
+                updateRobotMsg("Auto Mode Engaged.", 3000);
+            }
+            
+            // Close menu
+            document.getElementById('tools-menu').classList.remove('show');
+        }
+
+        function toggleToolsMenu(e) {
+            e.stopPropagation();
+            document.getElementById('tools-menu').classList.toggle('show');
+        }
+        
+        document.addEventListener('click', (e) => {
+            const btn = document.getElementById('tools-btn');
+            const menu = document.getElementById('tools-menu');
+            if (menu && btn) {
+                if (menu.classList.contains('show') && !btn.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.remove('show');
+                }
+            }
+        });
+
         // --- Interactive Particle Network Background ---
         const canvas = document.getElementById('particle-canvas');
         const ctx = canvas.getContext('2d');
@@ -250,14 +372,14 @@ html_content = """
 
 
         // --- Welcome Screen Typewriter ---
-        const greeting = "WHAT SHALL WE INVESTIGATE?";
+        const greeting = "ESTABLISH NEURAL LINK TO COMMENCE RESEARCH PROTOCOL";
         let charIndex = 0;
         
         function typeWriter() {
             if (charIndex < greeting.length) {
-                document.getElementById("typed-text").innerHTML = greeting.substring(0, charIndex + 1) + '<span class="cursor"></span>';
+                document.getElementById("subtitle-text").innerHTML = greeting.substring(0, charIndex + 1) + '<span class="cursor"></span>';
                 charIndex++;
-                setTimeout(typeWriter, 60);
+                setTimeout(typeWriter, 30);
             } else {
                 document.getElementById("suggestions").style.opacity = "1";
             }
@@ -387,7 +509,9 @@ html_content = """
             setTimeout(moveRobotToThinking, 800);
 
             try {
-                const response = await fetch('/stream?task=' + encodeURIComponent(text));
+                let url = '/stream?task=' + encodeURIComponent(text);
+                if (currentForcedTool) url += '&force_tool=' + encodeURIComponent(currentForcedTool);
+                const response = await fetch(url);
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
                 let logText = "";
@@ -458,13 +582,13 @@ async def get_frontend():
     return HTMLResponse(html_content)
 
 @app.get("/stream")
-async def stream_agent(task: str):
+async def stream_agent(task: str, force_tool: str = None):
     """Executes the agent and streams the thought process back to the frontend live"""
     agent = ReActAgent()
     
     async def event_generator():
         # Iterate over the agent's live updates
-        for update_type, text in agent.run_stream(task, max_turns=5):
+        for update_type, text in agent.run_stream(task, max_turns=5, force_tool=force_tool):
             # Format as Server-Sent Events (SSE)
             data = json.dumps({"type": update_type, "text": text})
             yield f"data: {data}\n\n"

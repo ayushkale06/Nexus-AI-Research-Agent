@@ -10,9 +10,9 @@ load_dotenv()
 # You will need to get a free Gemini API key from Google AI Studio (https://aistudio.google.com/)
 # Set it in a .env file as GEMINI_API_KEY=your_key
 
-SYSTEM_PROMPT = """
-You are an autonomous Research & Competitor Tracking AI Agent.
-Your goal is to track research trends, patent developments, and competitor activities.
+def get_system_prompt(force_tool: str = None) -> str:
+    base_prompt = """You are an autonomous Research & Competitor Tracking AI Agent.
+Your goal is to dynamically track research trends, open-source developments, and competitor activities using live external tools.
 
 You run in a loop of Thought, Action, PAUSE, Observation.
 At the end of the loop you output an Answer.
@@ -21,36 +21,54 @@ Use Thought to describe your thoughts about the question you have been asked.
 Use Action to run one of the actions available to you.
 You must PAUSE after your Action. Do not hallucinate the Observation. The system will provide the Observation.
 
-Available actions:
-- wiki_search: Searches Wikipedia for general knowledge and company overviews.
+"""
+    
+    if force_tool == "wiki_search":
+        tools_section = """Available actions:
+- wiki_search: Searches Wikipedia for general knowledge and company overviews. Use for background info.
   e.g. Action: wiki_search: OpenAI
-- patent_search: Searches the patent database for recent patents filed by a competitor.
-  e.g. Action: patent_search: OpenAI
+
+CRITICAL: You are FORCED to ONLY use the 'wiki_search' tool. Do not use any other tools."""
+    elif force_tool == "arxiv_search":
+        tools_section = """Available actions:
+- arxiv_search: Searches the ArXiv database for academic research papers. Use to track research and publications.
+  e.g. Action: arxiv_search: quantum computing
+
+CRITICAL: You are FORCED to ONLY use the 'arxiv_search' tool. Do not use any other tools."""
+    elif force_tool == "github_search":
+        tools_section = """Available actions:
+- github_search: Searches GitHub for open-source repositories. Use to track competitor software tools and code.
+  e.g. Action: github_search: autonomous agents
+
+CRITICAL: You are FORCED to ONLY use the 'github_search' tool. Do not use any other tools."""
+    else:
+        tools_section = """Available actions:
+- wiki_search: Searches Wikipedia for general knowledge and company overviews. Use for background info.
+  e.g. Action: wiki_search: OpenAI
+- arxiv_search: Searches the ArXiv database for academic research papers. Use to track research and publications.
+  e.g. Action: arxiv_search: quantum computing
+- github_search: Searches GitHub for open-source repositories. Use to track competitor software tools and code.
+  e.g. Action: github_search: autonomous agents"""
+
+    example_section = """
 
 Example session:
 
-Question: What is OpenAI and do they have any recent patents?
-Thought: I should first find out what OpenAI is using wiki_search.
-Action: wiki_search: OpenAI
+Question: What is OpenAI doing in robotics research, and do they have any open source tools for it?
+Thought: I should first find out their general robotics background using wiki_search.
+Action: wiki_search: OpenAI robotics
 PAUSE
 
 You will be called again with this:
-Observation: Title: OpenAI... Summary: OpenAI is an AI research organization...
+Observation: Title: OpenAI... Summary: OpenAI is an AI research organization that has explored robotics...
 
-Thought: Now I should check their recent patents.
-Action: patent_search: OpenAI
-PAUSE
+Thought: I have all the information I need.
+Answer: # Competitor Report: OpenAI Robotics
+**Background:** OpenAI has explored robotics...
 
-Observation: Recent Patents for OpenAI: 1. US-Pat-109...
+Now begin! Always format your final Answer beautifully in Markdown."""
 
-Thought: I have the information I need.
-Answer: # Competitor Report: OpenAI
-OpenAI is an AI research organization. 
-**Recent Patents:**
-- US-Pat-109...
-
-Now begin! Always format your final Answer beautifully in Markdown.
-"""
+    return base_prompt + tools_section + example_section
 
 class ReActAgent:
     def __init__(self, api_key: str = None):
@@ -60,11 +78,13 @@ class ReActAgent:
         self.client = genai.Client(api_key=self.api_key)
         self.model_name = "gemini-3.5-flash-lite" # Lite model with higher quota limits
 
-    def run_stream(self, task: str, max_turns: int = 5):
+    def run_stream(self, task: str, max_turns: int = 5, force_tool: str = None):
         import time
-        messages = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT + f"\n\nQuestion: {task}"}]}]
+        sys_prompt = get_system_prompt(force_tool)
+        messages = [{"role": "user", "parts": [{"text": sys_prompt + f"\n\nQuestion: {task}"}]}]
         
-        yield "log", f"--- Starting Task: {task} ---"
+        mode_text = f" [FORCED TOOL: {force_tool}]" if force_tool else " [AUTO MODE]"
+        yield "log", f"--- Starting Task: {task}{mode_text} ---"
         
         for turn in range(max_turns):
             yield "log", f"\n--- Turn {turn + 1} ---"

@@ -1,4 +1,8 @@
 import wikipedia
+import urllib.request
+import urllib.parse
+import xml.etree.ElementTree as ET
+import json
 
 def wiki_search(query: str) -> str:
     """Searches Wikipedia for company information, research, and general knowledge."""
@@ -12,24 +16,57 @@ def wiki_search(query: str) -> str:
     except Exception as e:
         return f"Error searching Wikipedia: {e}"
 
-def patent_search(company_name: str) -> str:
-    """Searches the patent database for recent patents filed by a competitor."""
-    # Mock data to ensure a flawless demo for the hackathon
-    mock_database = {
-        "openai": "1. US-Pat-109: 'Method for scalable training of large language models.' (Filed: Jan 2024)\n2. US-Pat-110: 'System for multimodal video generation.' (Filed: Mar 2024)",
-        "google": "1. US-Pat-201: 'Efficient attention mechanisms for transformers.' (Filed: Feb 2024)",
-        "microsoft": "1. US-Pat-305: 'Integration of generative AI into operating systems.' (Filed: April 2024)"
-    }
-    
-    company = company_name.lower()
-    for key, patents in mock_database.items():
-        if key in company:
-            return f"Recent Patents for {company_name}:\n{patents}"
+def arxiv_search(query: str) -> str:
+    """Searches the ArXiv database for academic research papers."""
+    try:
+        url = f"http://export.arxiv.org/api/query?search_query=all:{urllib.parse.quote(query)}&start=0&max_results=3"
+        response = urllib.request.urlopen(url)
+        data = response.read()
+        root = ET.fromstring(data)
+        
+        ns = {'atom': 'http://www.w3.org/2005/Atom'}
+        entries = root.findall('atom:entry', ns)
+        
+        if not entries:
+            return f"No research papers found on ArXiv for query: '{query}'."
+        
+        results = []
+        for entry in entries:
+            title = entry.find('atom:title', ns).text.replace('\n', ' ').strip()
+            summary = entry.find('atom:summary', ns).text.replace('\n', ' ').strip()
+            results.append(f"Title: {title}\nSummary: {summary[:300]}...")
             
-    return f"No recent patents found for '{company_name}' in our tracking database."
+        return "\n\n".join(results)
+    except Exception as e:
+        return f"Error fetching from ArXiv: {str(e)}"
+
+def github_search(query: str) -> str:
+    """Searches GitHub for open source competitor projects and tools."""
+    try:
+        url = f"https://api.github.com/search/repositories?q={urllib.parse.quote(query)}&sort=stars&order=desc"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Nexus-AI-Hackathon'})
+        response = urllib.request.urlopen(req)
+        data = json.loads(response.read().decode('utf-8'))
+        
+        items = data.get('items', [])
+        if not items:
+            return f"No GitHub repositories found for query: '{query}'."
+        
+        results = []
+        for item in items[:3]:
+            name = item.get('full_name')
+            desc = item.get('description', 'No description')
+            stars = item.get('stargazers_count')
+            url = item.get('html_url')
+            results.append(f"Repo: {name} ({stars} stars)\nURL: {url}\nDescription: {desc}")
+            
+        return "\n\n".join(results)
+    except Exception as e:
+        return f"Error fetching from GitHub: {str(e)}"
 
 # Tool registry
 AVAILABLE_TOOLS = {
     "wiki_search": wiki_search,
-    "patent_search": patent_search
+    "arxiv_search": arxiv_search,
+    "github_search": github_search
 }
