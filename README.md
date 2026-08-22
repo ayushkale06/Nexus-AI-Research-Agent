@@ -53,3 +53,6 @@ To provide a stunning user experience, Nexus.AI features a custom glassmorphism 
 
 ### 3. Final Output
 ![Result](result.png)
+
+### 4. FastAPI Backend
+![Backend Terminal](terminal.png)
