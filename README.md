@@ -154,3 +154,9 @@ Running Scenario: Contradictory
   }
 }
 ```
+
+### Automated Terminal Execution
+![Automated Evaluation Suite](task6_1.png)
+
+### Formal Evaluation Criteria
+![Evaluation Criteria Document](task6_2.png)
