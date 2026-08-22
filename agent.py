@@ -1,11 +1,48 @@
 import os
 import re
+import json
 import time
 from dotenv import load_dotenv
 from google import genai
 from tools import AVAILABLE_TOOLS
 
 load_dotenv()
+
+class MemoryManager:
+    """Handles short-term and long-term memory persistence across agent sessions."""
+    def __init__(self, filepath="agent_memory.json"):
+        self.filepath = filepath
+        self.memory = self._load()
+
+    def _load(self):
+        if os.path.exists(self.filepath):
+            try:
+                with open(self.filepath, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return []
+
+    def get_context_string(self, limit=2) -> str:
+        """Returns the last 'limit' conversations as a context string."""
+        if not self.memory:
+            return "No previous conversation history."
+        
+        recent = self.memory[-limit:]
+        context = "--- PREVIOUS CONVERSATION CONTEXT ---\n"
+        for i, entry in enumerate(recent):
+            context += f"Previous Query {i+1}: {entry['task']}\n"
+            # Truncate answer slightly to avoid exploding the context window
+            ans = entry['answer']
+            if len(ans) > 500: ans = ans[:500] + "...\n(truncated)"
+            context += f"Previous Answer {i+1}: {ans}\n\n"
+        context += "--------------------------------------\n"
+        return context
+
+    def add_entry(self, task: str, answer: str):
+        self.memory.append({"task": task, "answer": answer})
+        with open(self.filepath, "w", encoding="utf-8") as f:
+            json.dump(self.memory, f, indent=4)
 
 def get_researcher_prompt(force_tool: str = None) -> str:
     base_prompt = """You are 'Agent-Scout', an autonomous Research Data Gatherer.
@@ -148,12 +185,19 @@ class MultiAgentTeam:
         
         self.scout = ResearcherAgent(self.client, self.model_name)
         self.lead = SynthesizerAgent(self.client, self.model_name)
+        
+        # TASK 4: Initialize Memory Management
+        self.memory_manager = MemoryManager()
 
     def run_stream(self, task: str, max_turns: int = 5, force_tool: str = None):
+        # 0. Retrieve Context (Long-term / Short-term memory)
+        context = self.memory_manager.get_context_string(limit=2)
+        enriched_task = f"{context}\nCurrent User Query: {task}"
+        
         raw_data = ""
         
         # 1. Agent-Scout (Researcher) Gathers Data
-        for update_type, text in self.scout.run_stream(task, max_turns, force_tool):
+        for update_type, text in self.scout.run_stream(enriched_task, max_turns, force_tool):
             if update_type == "scout_done":
                 raw_data = text
                 break
@@ -165,8 +209,14 @@ class MultiAgentTeam:
             return
             
         # 2. Agent-Lead (Synthesizer) Writes Final Report
-        for update_type, text in self.lead.run_stream(task, raw_data):
+        final_answer = ""
+        for update_type, text in self.lead.run_stream(enriched_task, raw_data):
             yield update_type, text
+            if update_type == "answer":
+                final_answer = text
+                
+        # 3. Store the result in Memory
+        self.memory_manager.add_entry(task, final_answer)
 
 if __name__ == "__main__":
     team = MultiAgentTeam()
