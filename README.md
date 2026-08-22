@@ -92,3 +92,18 @@ This section demonstrates advanced session-based memory architecture. Nexus.AI d
 
 ### 2. Contextual Memory Retrieval
 ![Memory Retrieval](memory_2.png)
+
+## Task 5: Agent Framework & Adversarial Testing
+This section demonstrates our custom **NexusGraph** state-machine framework, built as an equivalent to LangGraph to retain bare-metal control over live Server-Sent Events (SSE) streaming and minimize token bloat. NexusGraph achieves full conditional routing, loop detection, and autonomous replanning with zero external dependencies.
+
+### 1. Chaos Mode (Adversarial Test)
+The UI includes a dedicated Adversarial Test toggle that intentionally sabotages external APIs (simulating 503 errors) to test the agent's resilience.
+![Chaos Mode UI](task5_1.png)
+
+### 2. Autonomous Replanning & Tool Fallback
+When the primary tool fails, the framework intercepts the error and forces Agent-Scout to dynamically replan and utilize a fallback tool (e.g., switching from Wikipedia to ArXiv).
+![Tool Fallback](task5_2.png)
+
+### 3. Agent-Critic Hypothesis Verification
+A third agent (Agent-Critic) intercepts the workflow before final synthesis to verify the data, resolve conflicting evidence, and ensure the objective was met.
+![Critic Verification](task5_3.png)
