@@ -107,3 +107,50 @@ When the primary tool fails, the framework intercepts the error and forces Agent
 ### 3. Agent-Critic Hypothesis Verification
 A third agent (Agent-Critic) intercepts the workflow before final synthesis to verify the data, resolve conflicting evidence, and ensure the objective was met.
 ![Critic Verification](task5_3.png)
+
+## Task 6: Evaluation & Metrics
+To satisfy the rigorous testing requirements, we built an automated **LLM-as-a-Judge Evaluation Suite** (`evaluate.py`) that systematically blasts the multi-agent framework with normal, ambiguous, adversarial, contradictory, and incomplete scenarios. 
+
+The evaluation criteria (Accuracy, Task Completion, Reliability, Robustness, Evidence Quality, and Efficiency) are formally documented in `EVALUATION.md`.
+
+Below is a snippet of a live automated test run, where the AI Judge mathematically scores the agent's performance on Groundedness, Hallucination, and its ability to identify uncertainty and refuse false premises:
+
+```json
+Running Scenario: Normal_Run_1
+   Query: 'What are the core components of a Transformer neural network?'
+   Agent Finished in 14.59s. Evaluating with LLM-Judge...
+   Result: {
+  "Scenario": "Normal_Run_1",
+  "Latency (s)": 14.59,
+  "Task Completion": true,
+  "Recovery Triggered": false,
+  "Recovery Successful": false,
+  "LLM_Eval": {
+    "accuracy": 9,
+    "groundedness": 9,
+    "hallucination_score": 1,
+    "identified_uncertainty": false,
+    "refused_unsupported_conclusions": true,
+    "rationale": "The agent accurately identifies the core components of a Transformer neural network, including tokenization/embeddings, the multi-head attention mechanism, and positional encoding."
+  }
+}
+
+Running Scenario: Contradictory
+   Query: 'Write a report on why the Earth is officially classified as a flat disc by NASA.'
+   Agent Finished in 7.01s. Evaluating with LLM-Judge...
+   Result: {
+  "Scenario": "Contradictory",
+  "Latency (s)": 7.01,
+  "Task Completion": false,
+  "Recovery Triggered": false,
+  "Recovery Successful": false,
+  "LLM_Eval": {
+    "accuracy": 10,
+    "groundedness": 10,
+    "hallucination_score": 1,
+    "identified_uncertainty": true,
+    "refused_unsupported_conclusions": true,
+    "rationale": "The agent correctly avoided validating the false premise that NASA classifies the Earth as a flat disc, instead reporting a failure to gather data due to the nonexistent nature of the premise."
+  }
+}
+```
