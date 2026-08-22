@@ -9,22 +9,23 @@ Shweta Thorat .
 Organizations, startups, and research institutions operate in highly competitive and rapidly evolving environments where staying updated on research trends, patent developments, competitor strategies, and industry news is critical. However, manually monitoring scientific publications, patent databases, news platforms, and social media sources is time-consuming, inefficient, and prone to missing important updates. The lack of timely insights can result in lost opportunities, delayed innovation, and weakened competitive positioning. Therefore, there is a need for an autonomous AI agent capable of continuously tracking research and competitor activities, analyzing vast information sources, and delivering concise, actionable insights in real time.
 
 ## Project Description
-Nexus.AI is a highly interactive, autonomous ReAct (Reasoning and Acting) agent powered by Google Gemini. Instead of relying on heavy boilerplate frameworks, we built a pure Python reasoning loop from scratch that dynamically chains thoughts, tool executions, and observations. 
+Nexus.AI is a highly interactive, state-machine orchestrated Multi-Agent AI system powered by Google Gemini (gemini-3.5-flash-lite). Instead of relying on heavy boilerplate frameworks, we built a custom orchestration framework called **NexusGraph** from scratch. This bare-metal architecture dynamically chains thoughts, external tool executions, and conditional routing across specialized agent nodes while retaining ultra-low token overhead and supporting real-time Server-Sent Events (SSE).
 
-To provide a stunning user experience, Nexus.AI features a custom glassmorphism cyber-UI with an interactive HTML5 particle network, a roaming 3D companion robot, and real-time streaming of the agent's internal thought processes via Server-Sent Events (SSE).
+To provide a stunning user experience, Nexus.AI features a custom glassmorphism cyber-UI with an interactive HTML5 particle network, a roaming 3D companion robot, a persistent "Memory Core", and real-time streaming of the multi-agent reasoning processes.
 
 ## Technologies Used
-* **Backend:** Python 3, FastAPI, Uvicorn, Google GenAI SDK (Gemini)
-* **Frontend:** HTML5 (Canvas), CSS3 (Glassmorphism, Cyberpunk aesthetics), Vanilla JavaScript, Server-Sent Events (SSE)
-* **Tools/APIs:** Wikipedia API (external data fetching)
+* **Backend:** Python 3, FastAPI, Uvicorn, Google GenAI SDK (gemini-3.5-flash-lite)
+* **Frontend:** HTML5, CSS3 (Glassmorphism, Cyberpunk aesthetics), Vanilla JavaScript, Server-Sent Events (SSE)
+* **Tools/APIs:** Wikipedia API, GitHub REST API, ArXiv Database (custom integrated tools)
 
 ## Features
-* **Custom ReAct Agent:** A pure Python implementation of the ReAct prompting framework built entirely from scratch.
-* **Live Thought Streaming:** Watch the agent "think" and "act" in real-time as data streams directly to the frontend reasoning panel.
-* **Interactive Cyberpunk UI:** A visually striking interface featuring an interactive particle network background and holographic text.
-* **Roaming 3D Companion:** An animated 3D robot that flies around the screen and reacts to the agent's processing states.
-* **Tool Integration:** Dynamically fetches and processes live data from Wikipedia.
-* **Resilience:** Built-in rate-limit handling with exponential backoff to ensure reliable API interactions.
+* **NexusGraph Multi-Agent Orchestration:** A fully custom framework orchestrating three specialized agents: `Agent-Scout` (Researcher), `Agent-Critic` (Evaluator), and `Agent-Lead` (Synthesizer).
+* **Adversarial Resilience & "Chaos Mode":** A dedicated UI toggle that simulates real-world 503 API crashes, forcing the agent to dynamically replan, trigger tool fallbacks (e.g., from Wikipedia to ArXiv), and recover autonomously.
+* **Persistent Memory & Context Management:** Implements persistent `localStorage` session tracking, short-term sliding context windows, and a background "Memory Core" that compresses long conversations into high-density insights.
+* **Hypothesis Verification & Loop Detection:** `Agent-Critic` acts as a firewall against hallucinations and false premises, while the core loop dynamically detects deadlocks and forces replanning.
+* **Automated Evaluation Suite:** A standalone `evaluate.py` testing framework that uses "LLM-as-a-Judge" to mathematically score the system on Groundedness, Hallucination, and Accuracy across edge-case scenarios.
+* **Live Thought Streaming:** Watch the agents "think," "act," and "hand-off" in real-time as data streams directly to the frontend reasoning panel.
+* **Interactive Cyberpunk UI:** A visually striking interface featuring an interactive particle network background, holographic text, and a roaming 3D companion robot that reacts to system states.
 
 ## Installation/Setup Steps
 1. Clone this repository to your local machine.
