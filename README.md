@@ -46,7 +46,9 @@ To provide a stunning user experience, Nexus.AI features a custom glassmorphism 
    **http://localhost:8000**
 3. Enter a research query in the terminal and watch Nexus.AI investigate!
 
-## Screenshots / Demo
+## Task 1: Agentic Reasoning & UI
+This section demonstrates the core ReAct reasoning loop, live thought streaming, and the custom cyber-UI built for the agent.
+
 ### 1. Welcome Screen
 ![Welcome Screen](welcome.png)
 
