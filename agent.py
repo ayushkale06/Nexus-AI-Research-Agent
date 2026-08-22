@@ -130,21 +130,25 @@ class ResearcherAgent:
         for turn in range(max_turns):
             yield "log", f"\n[Agent-Scout] --- Turn {turn + 1} ---"
             
-            # Retry loop for rate limits
+            # Retry loop for rate limits and API quirks
             reply = None
             for attempt in range(3):
                 try:
                     response = self.client.models.generate_content(model=self.model_name, contents=messages)
-                    reply = response.text
-                    break
+                    if response.text:
+                        reply = response.text
+                        break
+                    else:
+                        time.sleep(2) # Give it a moment if it returned empty
                 except Exception as e:
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                         time.sleep(15 * (attempt + 1))
                     else:
-                        raise e
+                        # Log it and try again instead of crashing
+                        time.sleep(2)
 
             if not reply:
-                yield "log", "[Agent-Scout] Failed due to rate limits."
+                yield "log", "[Agent-Scout] Failed to generate a valid response after multiple attempts."
                 return
             
             yield "log", f"[Agent-Scout] {reply}"
@@ -191,14 +195,17 @@ class SynthesizerAgent:
         for attempt in range(3):
             try:
                 response = self.client.models.generate_content(model=self.model_name, contents=messages)
-                yield "log", "\n[Agent-Lead] Report synthesis complete!"
-                yield "answer", response.text
-                break
+                if response.text:
+                    yield "log", "\n[Agent-Lead] Report synthesis complete!"
+                    yield "answer", response.text
+                    break
+                else:
+                    time.sleep(2)
             except Exception as e:
                 if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                     time.sleep(15 * (attempt + 1))
                 else:
-                    raise e
+                    time.sleep(2)
 
 
 class MultiAgentTeam:
