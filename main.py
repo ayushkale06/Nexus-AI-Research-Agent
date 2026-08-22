@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, StreamingResponse
 import json
 import asyncio
-from agent import ReActAgent
+from agent import MultiAgentTeam
 
 app = FastAPI()
 
@@ -584,7 +584,7 @@ async def get_frontend():
 @app.get("/stream")
 async def stream_agent(task: str, force_tool: str = None):
     """Executes the agent and streams the thought process back to the frontend live"""
-    agent = ReActAgent()
+    agent = MultiAgentTeam()
     
     async def event_generator():
         # Iterate over the agent's live updates
