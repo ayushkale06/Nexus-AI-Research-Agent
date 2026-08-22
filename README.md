@@ -1,10 +1,12 @@
 # Nexus.AI - Autonomous Research Agent
 
 ## Team Members
-* [Insert Team Members' Names Here]
-
+Ayush Kale (Team Leader)
+Aditya Bhagwat
+Sakshi Raut
+Shweta Thorat
 ## Problem Statement
-The goal is to develop an autonomous AI agent capable of continuously tracking research and competitor activities, reasoning through complex data, and delivering concise, actionable insights in real-time.
+Organizations, startups, and research institutions operate in highly competitive and rapidly evolving environments where staying updated on research trends, patent developments, competitor strategies, and industry news is critical. However, manually monitoring scientific publications, patent databases, news platforms, and social media sources is time-consuming, inefficient, and prone to missing important updates. The lack of timely insights can result in lost opportunities, delayed innovation, and weakened competitive positioning. Therefore, there is a need for an autonomous AI agent capable of continuously tracking research and competitor activities, analyzing vast information sources, and delivering concise, actionable insights in real time.
 
 ## Project Description
 Nexus.AI is a highly interactive, autonomous ReAct (Reasoning and Acting) agent powered by Google Gemini. Instead of relying on heavy boilerplate frameworks, we built a pure Python reasoning loop from scratch that dynamically chains thoughts, tool executions, and observations. 
