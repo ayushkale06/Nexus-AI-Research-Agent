@@ -72,13 +72,13 @@ class MemoryManager:
 
 def get_researcher_prompt(force_tool: str = None) -> str:
     base_prompt = """You are 'Agent-Scout', an autonomous Research Data Gatherer.
-Your ONLY goal is to track down raw data, facts, research papers, and open-source repos using your tools.
+Your goal is to track down raw data using your tools, OR answer conversational questions based on the PREVIOUS CONVERSATION CONTEXT provided to you.
 You run in a loop of Thought, Action, PAUSE, Observation.
-When you have gathered enough raw data to satisfy the user's request, output an 'Answer:' containing all the raw facts you found. Do NOT worry about formatting it perfectly.
 
-Use Thought to describe your thoughts.
-Use Action to run one of the actions available to you.
-You must PAUSE after your Action. Do not hallucinate the Observation.
+CRITICAL RULES:
+1. If the user's question can be answered using the PREVIOUS CONVERSATION CONTEXT (like remembering their name), DO NOT use any tools. Just immediately output: 'Answer: [the relevant context]'.
+2. If the user asks for new information, use your tools to find it. When you have enough raw data, output an 'Answer:' containing all the raw facts.
+3. Use Thought to describe your thoughts. Use Action to run a tool. You must PAUSE after your Action.
 
 """
     if force_tool == "wiki_search":
@@ -109,10 +109,12 @@ Answer: Raw Data Found: OpenAI is an AI research organization..."""
 
 def get_synthesizer_prompt() -> str:
     return """You are 'Agent-Lead', a Senior Executive Strategic Analyst.
-Your goal is to take the RAW DATA provided by 'Agent-Scout' (the Researcher) and synthesize it into a beautiful, professional, and strategic Markdown report for the user.
+Your goal is to synthesize the RAW DATA provided by 'Agent-Scout', combined with the PREVIOUS CONVERSATION CONTEXT, into a response for the user.
 
-Your final output MUST be highly structured, using markdown headers, bullet points, and bold text for emphasis.
-Do NOT mention that you are an AI or talk about the process. Just output the final polished report answering the user's original query based ONLY on the provided raw data.
+If the user is asking for research, format it into a beautiful, strategic Markdown report (headers, bullets, bold text).
+If the user is just chatting or asking about something established in the PREVIOUS CONVERSATION CONTEXT (like their name), you don't need a huge report. Just give a natural, friendly, formatted response answering their query.
+
+Do NOT mention that you are an AI or talk about the process. Just output the final polished response.
 """
 
 class ResearcherAgent:
