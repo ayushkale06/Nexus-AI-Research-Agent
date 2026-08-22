@@ -83,3 +83,12 @@ This section demonstrates the integration of multiple external tools and APIs dy
 This section demonstrates two specialized agents collaborating. Agent-Scout acts as the researcher gathering raw data using tools, and Agent-Lead acts as the executive synthesizer formulating the final report.
 
 ![Multi-Agent Orchestration](task3_1.png)
+
+## Task 4: Context & Memory Management
+This section demonstrates advanced session-based memory architecture. Nexus.AI dynamically stores short-term conversational context and compresses long-term interactions using an LLM to prevent context-window overflow. The UI features a flashing 'Memory Core' when past data is retrieved.
+
+### 1. Multi-Turn Conversation UI
+![Multi-Turn Memory](assets/memory_1.png)
+
+### 2. Contextual Memory Retrieval
+![Memory Retrieval](assets/memory_2.png)
