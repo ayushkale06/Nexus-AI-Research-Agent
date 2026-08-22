@@ -161,3 +161,40 @@ Running Scenario: Contradictory
 
 ### Formal Evaluation Criteria
 ![Evaluation Criteria Document](task6_2.png)
+
+## Task 7: Advanced Tracing & Observability
+We built a custom, zero-dependency telemetry engine (`NexusTracer`) in `tracer.py` that tracks end-to-end execution of agents, prompts, decisions, tool calls, and latency.
+
+Instead of just logging, **NexusTracer autonomously diagnoses root causes and applies system improvements in real-time.** 
+
+Below is the output from our `task7_demo.py` script demonstrating the tracer identifying a simulated 503 API failure and latency bottleneck, applying an aggressive fallback cache, and vastly improving the execution speed and success rate:
+
+```text
+Starting Task 7: Advanced Tracing & Observability Demo
+
+--- [BEFORE] INITIAL RUN ---
+Running Execution with config: {'USE_FAST_FALLBACK': False, 'ENABLE_RESPONSE_CACHE': False}
+  [!] System simulating external API failure/hang...
+  Execution finished in 8.8s
+
+--- TRACE DIAGNOSTICS & SYSTEM UPGRADE ---
+Anomalies Detected in Trace:
+  - Root Cause Detected: 1 failed tool calls observed (e.g. tool:wiki_search).
+  - Root Cause Detected: High latency bottleneck. 1 operations took > 3s.
+
+Automatically Applying System Improvements:
+  - USE_FAST_FALLBACK = True
+  - ENABLE_RESPONSE_CACHE = True
+
+--- [AFTER] OPTIMIZED RUN ---
+Running Execution with config: {'USE_FAST_FALLBACK': True, 'ENABLE_RESPONSE_CACHE': True}
+  Execution finished in 2.6s
+
+BEFORE VS AFTER COMPARISON
+Latency:      8.8s  -->  2.6s
+Tool Errors:  1  -->  0
+Total Performance Improvement: 70.5%
+
+The tracing telemetry successfully identified the root cause and autonomously self-healed the system!
+```
+
