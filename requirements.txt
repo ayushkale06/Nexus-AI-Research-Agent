@@ -1,5 +1,4 @@
 google-genai
-duckduckgo-search
-python-dotenv
 wikipedia
-streamlit
+fastapi
+uvicorn
