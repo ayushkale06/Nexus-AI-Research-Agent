@@ -122,12 +122,18 @@ class ResearcherAgent:
         self.client = client
         self.model_name = model_name
 
-    def run_stream(self, task: str, max_turns: int = 5, force_tool: str = None):
+    def run_stream(self, task: str, max_turns: int = 5, force_tool: str = None, chaos_mode: bool = False, critic_feedback: str = None):
         sys_prompt = get_researcher_prompt(force_tool)
-        messages = [{"role": "user", "parts": [{"text": sys_prompt + f"\n\nQuestion: {task}"}]}]
+        prompt_text = sys_prompt + f"\n\nQuestion: {task}"
+        if critic_feedback:
+            prompt_text += f"\n\nCRITIC REJECTION FEEDBACK: Your previous answer was rejected by the Critic. Reason: '{critic_feedback}'. REPLAN and gather better data."
+        messages = [{"role": "user", "parts": [{"text": prompt_text}]}]
         
         mode_text = f" [FORCED TOOL: {force_tool}]" if force_tool else " [AUTO MODE]"
+        if chaos_mode: mode_text += " [CHAOS MODE ACTIVE]"
         yield "log", f"--- [Agent-Scout (Researcher)] Starting Task: {task}{mode_text} ---"
+        
+        action_history = []
         
         for turn in range(max_turns):
             yield "log", f"\n[Agent-Scout] --- Turn {turn + 1} ---"
@@ -146,7 +152,6 @@ class ResearcherAgent:
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                         time.sleep(15 * (attempt + 1))
                     else:
-                        # Log it and try again instead of crashing
                         time.sleep(2)
 
             if not reply:
@@ -157,7 +162,7 @@ class ResearcherAgent:
             messages.append({"role": "model", "parts": [{"text": reply}]})
             
             if "Answer:" in reply:
-                yield "log", "\n[Agent-Scout] Data gathering complete. Handing raw data to Agent-Lead."
+                yield "log", "\n[Agent-Scout] Data gathering complete. Handing raw data to Routing Engine."
                 answer_text = reply.split("Answer:")[1].strip()
                 yield "scout_done", answer_text
                 break
@@ -167,17 +172,71 @@ class ResearcherAgent:
             if action_match:
                 tool_name = action_match.group(1).strip()
                 action_input = action_match.group(2).strip()
+                action_signature = f"{tool_name}:{action_input}"
+                action_history.append(action_signature)
+                
+                # Loop Detection
+                if len(action_history) >= 3 and action_history[-1] == action_history[-2] == action_history[-3]:
+                    yield "log", "[SYSTEM: DEADLOCK DETECTED - FORCING REPLAN]"
+                    messages.append({"role": "user", "parts": [{"text": "SYSTEM EXCEPTION: DEADLOCK DETECTED. You are repeating the same action. You MUST replan and use a DIFFERENT tool or a DIFFERENT search term."}]})
+                    continue
                 
                 if tool_name in AVAILABLE_TOOLS:
                     yield "log", f"\n[Agent-Scout] [Executing Tool: {tool_name} with input: '{action_input}']"
-                    observation = AVAILABLE_TOOLS[tool_name](action_input)
-                    yield "log", f"[Agent-Scout] [Observation]:\n{observation[:500]}...\n"
                     
+                    # Chaos Mode Interceptor
+                    if chaos_mode and tool_name in ["wiki_search", "github_search"]:
+                        yield "log", f"[SYSTEM: ADVERSARIAL MODE] Simulating {tool_name} API Failure (503 Service Unavailable)."
+                        observation = f"CRITICAL FAILURE: {tool_name} API is down (503 Service Unavailable). You MUST use a fallback tool like arxiv_search or adjust your plan."
+                    else:
+                        observation = AVAILABLE_TOOLS[tool_name](action_input)
+                        
+                    yield "log", f"[Agent-Scout] [Observation]:\n{observation[:500]}...\n"
                     messages.append({"role": "user", "parts": [{"text": f"Observation: {observation}"}]})
                 else:
                     messages.append({"role": "user", "parts": [{"text": f"Observation: Tool '{tool_name}' not found."}]})
             else:
                 messages.append({"role": "user", "parts": [{"text": "Please provide either an 'Action: tool_name: input' or an 'Answer: ...'"}]})
+
+
+def get_critic_prompt() -> str:
+    return """You are 'Agent-Critic', the Verification & Fact-Checking Engine.
+Your goal is to evaluate the RAW DATA gathered by Agent-Scout.
+1. Check for conflicting evidence or hallucinations.
+2. Check if the data genuinely answers the user's query.
+If the data is insufficient, flawed, or hallucinates, output: 'STATUS: REJECTED\nReason: [detailed reason for Scout]'.
+If the data is solid and ready for the Lead, output: 'STATUS: APPROVED'.
+"""
+
+class CriticAgent:
+    def __init__(self, client, model_name):
+        self.client = client
+        self.model_name = model_name
+
+    def run_stream(self, task: str, raw_data: str):
+        yield "log", "\n--- [Agent-Critic (Verification)] Analyzing Scout Data ---"
+        yield "log", "[Agent-Critic] Verifying hypothesis and resolving conflicting evidence..."
+        
+        sys_prompt = get_critic_prompt()
+        prompt = f"Original Query: {task}\n\nRAW DATA from Agent-Scout:\n{raw_data}\n\nEvaluate now:"
+        messages = [{"role": "user", "parts": [{"text": sys_prompt + "\n\n" + prompt}]}]
+        
+        for attempt in range(3):
+            try:
+                response = self.client.models.generate_content(model=self.model_name, contents=messages)
+                if response.text:
+                    if "STATUS: APPROVED" in response.text:
+                        yield "log", "[Agent-Critic] STATUS: APPROVED. Data is verified."
+                        yield "critic_done", True
+                    else:
+                        yield "log", f"[Agent-Critic] {response.text}"
+                        reason = response.text.split("Reason:")[1].strip() if "Reason:" in response.text else response.text
+                        yield "critic_done", reason
+                    break
+                else:
+                    time.sleep(2)
+            except Exception:
+                time.sleep(2)
 
 
 class SynthesizerAgent:
@@ -219,12 +278,13 @@ class MultiAgentTeam:
         self.model_name = "gemini-3.5-flash-lite"
         
         self.scout = ResearcherAgent(self.client, self.model_name)
+        self.critic = CriticAgent(self.client, self.model_name)
         self.lead = SynthesizerAgent(self.client, self.model_name)
         
         # TASK 4: Initialize Memory Management
         self.memory_manager = MemoryManager(self.client)
 
-    def run_stream(self, task: str, session_id: str, max_turns: int = 5, force_tool: str = None):
+    def run_stream(self, task: str, session_id: str, max_turns: int = 5, force_tool: str = None, chaos_mode: bool = False):
         # 0. Retrieve Context (Long-term / Short-term memory)
         context, count, has_summary = self.memory_manager.get_context_string(session_id)
         
@@ -235,28 +295,50 @@ class MultiAgentTeam:
         
         enriched_task = f"{context}\nCurrent User Query: {task}"
         
+        # Conditional Routing Loop (Scout -> Critic)
         raw_data = ""
+        critic_feedback = None
+        max_rejections = 2
         
-        # 1. Agent-Scout (Researcher) Gathers Data
-        for update_type, text in self.scout.run_stream(enriched_task, max_turns, force_tool):
-            if update_type == "scout_done":
-                raw_data = text
+        for attempt in range(max_rejections + 1):
+            raw_data = ""
+            # 1. Agent-Scout (Researcher) Gathers Data
+            for update_type, text in self.scout.run_stream(enriched_task, max_turns, force_tool, chaos_mode, critic_feedback):
+                if update_type == "scout_done":
+                    raw_data = text
+                    break
+                else:
+                    yield update_type, text
+                    
+            if not raw_data:
+                yield "answer", "The Researcher Agent failed to gather data."
+                return
+                
+            # 2. Agent-Critic Evaluates
+            critic_approved = False
+            for update_type, text in self.critic.run_stream(task, raw_data):
+                if update_type == "critic_done":
+                    if text is True:
+                        critic_approved = True
+                    else:
+                        critic_feedback = text
+                    break
+                else:
+                    yield update_type, text
+                    
+            if critic_approved:
                 break
             else:
-                yield update_type, text
+                yield "log", f"[ROUTING] Critic Rejected Data. Routing back to Scout (Attempt {attempt+1}/{max_rejections})."
                 
-        if not raw_data:
-            yield "answer", "The Researcher Agent failed to gather data."
-            return
-            
-        # 2. Agent-Lead (Synthesizer) Writes Final Report
+        # 3. Agent-Lead (Synthesizer) Writes Final Report
         final_answer = ""
         for update_type, text in self.lead.run_stream(enriched_task, raw_data):
             yield update_type, text
             if update_type == "answer":
                 final_answer = text
                 
-        # 3. Store the result in Memory
+        # 4. Store the result in Memory
         self.memory_manager.add_entry(session_id, task, final_answer)
 
 if __name__ == "__main__":

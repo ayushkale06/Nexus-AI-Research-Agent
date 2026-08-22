@@ -276,6 +276,15 @@ html_content = """
                         <small>Only search GitHub</small>
                     </div>
                 </div>
+                
+                <div class="tools-menu-header" style="margin-top: 10px; color: #ef4444; border-bottom-color: rgba(239, 68, 68, 0.2);">Task 5: Adversarial Test</div>
+                <div class="tool-item" id="chaos-btn" onclick="toggleChaosMode(this)">
+                    <span>⚠️</span>
+                    <div>
+                        <strong style="color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);">Chaos Mode</strong>
+                        <small style="color: #fca5a5;">Simulate 503 API Failures</small>
+                    </div>
+                </div>
             </div>
 
             <input type="text" id="prompt" placeholder="Initialize query sequence..." autocomplete="off" onkeypress="handleKeyPress(event)">
@@ -309,6 +318,21 @@ html_content = """
         
         // --- Tools Menu Logic ---
         let currentForcedTool = null;
+        let isChaosMode = false;
+        
+        function toggleChaosMode(btn) {
+            isChaosMode = !isChaosMode;
+            if (isChaosMode) {
+                btn.classList.add('active-tool');
+                btn.style.boxShadow = "0 0 15px rgba(239, 68, 68, 0.5)";
+                updateRobotMsg("WARNING: Adversarial Chaos Mode Activated.", 4000);
+            } else {
+                btn.classList.remove('active-tool');
+                btn.style.boxShadow = "none";
+                updateRobotMsg("Chaos Mode Deactivated.", 3000);
+            }
+            document.getElementById('tools-menu').classList.remove('show');
+        }
 
         function setForcedTool(toolName, element) {
             currentForcedTool = toolName;
@@ -537,6 +561,8 @@ html_content = """
             try {
                 let url = '/stream?task=' + encodeURIComponent(text) + '&session_id=' + SESSION_ID;
                 if (currentForcedTool) url += '&force_tool=' + encodeURIComponent(currentForcedTool);
+                if (isChaosMode) url += '&chaos_mode=true';
+                
                 const response = await fetch(url);
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
@@ -557,6 +583,10 @@ html_content = """
                                 if (data.text.includes('Executing Tool')) {
                                     headerText.innerText = "ACCESSING EXTERNAL MAINFRAME";
                                     updateRobotMsg("Running external tool search...", 4000);
+                                    moveRobotToThinking();
+                                } else if (data.text.includes('[Agent-Critic]')) {
+                                    headerText.innerText = "HYPOTHESIS VERIFICATION";
+                                    updateRobotMsg("Cross-referencing data points...", 4000);
                                     moveRobotToThinking();
                                 } else if (data.text.includes('Thought')) {
                                     headerText.innerText = "SYNTHESIZING DATA";
@@ -617,13 +647,13 @@ async def get_frontend():
     return HTMLResponse(html_content)
 
 @app.get("/stream")
-async def stream_agent(task: str, session_id: str, force_tool: str = None):
+async def stream_agent(task: str, session_id: str, force_tool: str = None, chaos_mode: bool = False):
     """Executes the agent and streams the thought process back to the frontend live"""
     agent = MultiAgentTeam()
     
     async def event_generator():
         # Iterate over the agent's live updates
-        for update_type, text in agent.run_stream(task, session_id, max_turns=5, force_tool=force_tool):
+        for update_type, text in agent.run_stream(task, session_id, max_turns=5, force_tool=force_tool, chaos_mode=chaos_mode):
             # Format as Server-Sent Events (SSE)
             data = json.dumps({"type": update_type, "text": text})
             yield f"data: {data}\n\n"
