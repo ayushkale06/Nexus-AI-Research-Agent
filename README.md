@@ -45,4 +45,4 @@ To provide a stunning user experience, Nexus.AI features a custom glassmorphism 
 3. Enter a research query in the terminal and watch Nexus.AI investigate!
 
 ## Screenshots / Demo
-![Nexus.AI Interface](assets/screenshot.png)
+![Nexus.AI Interface](screenshot.png)
