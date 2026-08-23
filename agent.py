@@ -77,8 +77,9 @@ You run in a loop of Thought, Action, PAUSE, Observation.
 
 CRITICAL RULES:
 1. If the user's question can be answered using the PREVIOUS CONVERSATION CONTEXT (like remembering their name), DO NOT use any tools. Just immediately output: 'Answer: [the relevant context]'.
-2. If the user asks for new information, use your tools to find it. When you have enough raw data, output an 'Answer:' containing all the raw facts.
-3. Use Thought to describe your thoughts. Use Action to run a tool. You must PAUSE after your Action.
+2. If the user just says hello or greets you (e.g. "hi", "hello", "hie"), DO NOT use tools. Just immediately output: 'Answer: Hello! I am Nexus, your AI research assistant. How can I help you today?'.
+3. If the user asks for new information, use your tools to find it. When you have enough raw data, output an 'Answer:' containing all the raw facts.
+4. Use Thought to describe your thoughts. Use Action to run a tool. You must PAUSE after your Action.
 
 """
     if force_tool == "wiki_search":
@@ -149,6 +150,7 @@ class ResearcherAgent:
                     else:
                         time.sleep(2) # Give it a moment if it returned empty
                 except Exception as e:
+                    print(f"DEBUG - LLM Exception: {e}")
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                         time.sleep(15 * (attempt + 1))
                     else:
@@ -275,7 +277,7 @@ class MultiAgentTeam:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is missing.")
         self.client = genai.Client(api_key=self.api_key)
-        self.model_name = "gemini-3.5-flash-lite"
+        self.model_name = "gemini-3.6-flash" # Swapped to stable version
         
         self.scout = ResearcherAgent(self.client, self.model_name)
         self.critic = CriticAgent(self.client, self.model_name)
