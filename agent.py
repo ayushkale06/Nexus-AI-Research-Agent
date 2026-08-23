@@ -151,6 +151,9 @@ class ResearcherAgent:
                         time.sleep(2) # Give it a moment if it returned empty
                 except Exception as e:
                     print(f"DEBUG - LLM Exception: {e}")
+                    # If it's a daily limit or perm block, retry is useless. Break immediately to trigger fallback.
+                    if "403" in str(e) or "PERMISSION_DENIED" in str(e) or "limit: 20" in str(e):
+                        break
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                         time.sleep(15 * (attempt + 1))
                     else:
