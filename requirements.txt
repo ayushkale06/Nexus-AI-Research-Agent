@@ -2,3 +2,4 @@ google-genai
 wikipedia
 fastapi
 uvicorn
+python-dotenv
