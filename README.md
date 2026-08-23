@@ -198,3 +198,6 @@ Total Performance Improvement: 70.5%
 The tracing telemetry successfully identified the root cause and autonomously self-healed the system!
 ```
 
+### Tracing & Self-Healing Terminal Output
+![Task 7 Tracing & Observability](task7.png)
+
