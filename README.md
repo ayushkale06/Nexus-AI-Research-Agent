@@ -201,3 +201,13 @@ The tracing telemetry successfully identified the root cause and autonomously se
 ### Tracing & Self-Healing Terminal Output
 ![Task 7 Tracing & Observability](task7.png)
 
+## Task 8: Production Cloud Deployment
+
+The Nexus AI Research Agent is fully deployed in a production-ready cloud environment on Render. It dynamically binds to ports and is fully integrated with Google's latest Gemini models.
+
+### Production Live URL:
+👉 **[https://nexus-ai-research-agent.onrender.com](https://nexus-ai-research-agent.onrender.com)**
+
+### Cloud Deployment Verification
+![Task 8 Cloud Deployment](task8.png)
+
