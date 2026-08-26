@@ -755,7 +755,11 @@ html_content = """\n<!DOCTYPE html>
         <div class="top-nav">
             <div class="model-pill">
                 <div class="model-pulse-dot"></div>
-                Gemini 3.6 Flash
+                <select id="model-select" style="background:transparent; border:none; color:white; font-size:12px; font-weight:500; outline:none; cursor:pointer; font-family:inherit;">
+                    <option value="gemini-3.6-flash" style="background:#222; color:white;">Gemini 3.6 Flash</option>
+                    <option value="groq/llama-3.3-70b-versatile" style="background:#222; color:white;">Llama 3.3 70B (Groq)</option>
+                    <option value="groq/gemma2-9b-it" style="background:#222; color:white;">Gemma 2 9B (Groq)</option>
+                </select>
             </div>
             
             <div class="memory-core" id="memory-core">
@@ -1091,7 +1095,8 @@ html_content = """\n<!DOCTYPE html>
             }
 
             try {
-                let url = '/stream?task=' + encodeURIComponent(text) + '&session_id=' + SESSION_ID;
+                const selectedModel = document.getElementById('model-select').value;
+                let url = '/stream?task=' + encodeURIComponent(text) + '&session_id=' + SESSION_ID + '&model=' + encodeURIComponent(selectedModel);
                 if (currentForcedTool) url += '&force_tool=' + encodeURIComponent(currentForcedTool);
                 if (isChaosMode) url += '&chaos_mode=true';
                 
@@ -1186,9 +1191,9 @@ async def get_frontend():
     return HTMLResponse(html_content)
 
 @app.get("/stream")
-async def stream_agent(task: str, session_id: str, force_tool: str = None, chaos_mode: bool = False):
+async def stream_agent(task: str, session_id: str, model: str = "gemini-3.6-flash", force_tool: str = None, chaos_mode: bool = False):
     """Executes the agent and streams the thought process back to the frontend live"""
-    agent = MultiAgentTeam()
+    agent = MultiAgentTeam(model_name=model)
     
     async def event_generator():
         # Iterate over the agent's live updates

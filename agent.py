@@ -10,11 +10,17 @@ load_dotenv()
 
 class MemoryManager:
     """Handles short-term and long-term memory persistence with Rolling Summary Compression and Session IDs."""
-    def __init__(self, client, model_name="gemini-3.6-flash", filepath="agent_memory.json"):
-        self.client = client
+    def __init__(self, team, model_name="gemini-3.6-flash", filepath="agent_memory.json"):
+        self.team = team
         self.model_name = model_name
         self.filepath = filepath
         self.db = self._load() # Format: {"session_id": {"history": [], "summary": ""}}
+
+    @property
+    def client(self):
+        if hasattr(self.team, "client"):
+            return self.team.client
+        return self.team
 
     def _load(self):
         if os.path.exists(self.filepath):
@@ -65,9 +71,14 @@ class MemoryManager:
     def _compress_memory(self, session_id: str, old_entry: dict):
         current_summary = self.db[session_id]["summary"]
         prompt = f"Update this memory summary: '{current_summary}'. Integrate this new past interaction -> User asked: '{old_entry['task']}'. AI replied: '{old_entry['answer'][:300]}'. Keep the final summary extremely dense and concise."
+        messages = [{"role": "user", "parts": [{"text": prompt}]}]
         try:
-            res = self.client.models.generate_content(model=self.model_name, contents=prompt)
-            self.db[session_id]["summary"] = res.text.strip()
+            if hasattr(self.team, "generate_content"):
+                res_text = self.team.generate_content(messages)
+            else:
+                res = self.team.models.generate_content(model=self.model_name, contents=messages)
+                res_text = res.text
+            self.db[session_id]["summary"] = res_text.strip()
         except Exception:
             pass # Ignore rate limits for background compression
 
@@ -121,9 +132,22 @@ Do NOT mention that you are an AI or talk about the process. Just output the fin
 """
 
 class ResearcherAgent:
-    def __init__(self, client, model_name):
-        self.client = client
+    def __init__(self, team, model_name):
+        self.team = team
         self.model_name = model_name
+
+    @property
+    def client(self):
+        if hasattr(self.team, "client"):
+            return self.team.client
+        return self.team
+
+    def _generate_content(self, messages: list) -> str:
+        if hasattr(self.team, "generate_content"):
+            return self.team.generate_content(messages)
+        else:
+            response = self.team.models.generate_content(model=self.model_name, contents=messages)
+            return response.text
 
     def run_stream(self, task: str, max_turns: int = 5, force_tool: str = None, chaos_mode: bool = False, critic_feedback: str = None):
         sys_prompt = get_researcher_prompt(force_tool)
@@ -145,19 +169,24 @@ class ResearcherAgent:
             reply = None
             for attempt in range(3):
                 try:
-                    response = self.client.models.generate_content(model=self.model_name, contents=messages)
-                    if response.text:
-                        reply = response.text
+                    res_text = self._generate_content(messages)
+                    if res_text:
+                        reply = res_text
                         break
                     else:
                         time.sleep(2) # Give it a moment if it returned empty
                 except Exception as e:
                     print(f"DEBUG - LLM Exception: {e}")
-                    # If it's a daily limit or perm block, retry is useless. Break immediately to trigger fallback.
-                    if "403" in str(e) or "PERMISSION_DENIED" in str(e) or "limit: 20" in str(e):
+                    if "403" in str(e) or "429" in str(e) or "400" in str(e) or "RESOURCE_EXHAUSTED" in str(e) or "PERMISSION_DENIED" in str(e) or "INVALID_ARGUMENT" in str(e) or "API_KEY_INVALID" in str(e):
+                        if hasattr(self.team, "rotate_key"):
+                            yield "log", f"[Agent-Scout] Quota limit/error on current key. Attempting key rotation..."
+                            if self.team.rotate_key():
+                                yield "log", f"[Agent-Scout] Key rotated successfully to key {self.team.current_key_idx + 1}. Retrying request..."
+                                time.sleep(1)
+                                continue
+                            else:
+                                yield "log", "[Agent-Scout] All keys in the rotation pool are exhausted."
                         break
-                    if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                        time.sleep(15 * (attempt + 1))
                     else:
                         time.sleep(2)
 
@@ -216,9 +245,22 @@ If the data is solid and ready for the Lead, output: 'STATUS: APPROVED'.
 """
 
 class CriticAgent:
-    def __init__(self, client, model_name):
-        self.client = client
+    def __init__(self, team, model_name):
+        self.team = team
         self.model_name = model_name
+
+    @property
+    def client(self):
+        if hasattr(self.team, "client"):
+            return self.team.client
+        return self.team
+
+    def _generate_content(self, messages: list) -> str:
+        if hasattr(self.team, "generate_content"):
+            return self.team.generate_content(messages)
+        else:
+            response = self.team.models.generate_content(model=self.model_name, contents=messages)
+            return response.text
 
     def run_stream(self, task: str, raw_data: str):
         yield "log", "\n--- [Agent-Critic (Verification)] Analyzing Scout Data ---"
@@ -230,26 +272,47 @@ class CriticAgent:
         
         for attempt in range(3):
             try:
-                response = self.client.models.generate_content(model=self.model_name, contents=messages)
-                if response.text:
-                    if "STATUS: APPROVED" in response.text:
+                res_text = self._generate_content(messages)
+                if res_text:
+                    if "STATUS: APPROVED" in res_text:
                         yield "log", "[Agent-Critic] STATUS: APPROVED. Data is verified."
                         yield "critic_done", True
                     else:
-                        yield "log", f"[Agent-Critic] {response.text}"
-                        reason = response.text.split("Reason:")[1].strip() if "Reason:" in response.text else response.text
+                        yield "log", f"[Agent-Critic] {res_text}"
+                        reason = res_text.split("Reason:")[1].strip() if "Reason:" in res_text else res_text
                         yield "critic_done", reason
                     break
                 else:
                     time.sleep(2)
-            except Exception:
+            except Exception as e:
+                print(f"DEBUG - LLM Exception (Critic): {e}")
+                if "403" in str(e) or "429" in str(e) or "400" in str(e) or "RESOURCE_EXHAUSTED" in str(e) or "PERMISSION_DENIED" in str(e) or "INVALID_ARGUMENT" in str(e) or "API_KEY_INVALID" in str(e):
+                    if hasattr(self.team, "rotate_key"):
+                        yield "log", f"[Agent-Critic] Quota limit/error on current key. Attempting key rotation..."
+                        if self.team.rotate_key():
+                            yield "log", f"[Agent-Critic] Key rotated successfully to key {self.team.current_key_idx + 1}. Retrying request..."
+                            time.sleep(1)
+                            continue
                 time.sleep(2)
 
 
 class SynthesizerAgent:
-    def __init__(self, client, model_name):
-        self.client = client
+    def __init__(self, team, model_name):
+        self.team = team
         self.model_name = model_name
+
+    @property
+    def client(self):
+        if hasattr(self.team, "client"):
+            return self.team.client
+        return self.team
+
+    def _generate_content(self, messages: list) -> str:
+        if hasattr(self.team, "generate_content"):
+            return self.team.generate_content(messages)
+        else:
+            response = self.team.models.generate_content(model=self.model_name, contents=messages)
+            return response.text
 
     def run_stream(self, original_task: str, raw_data: str):
         yield "log", "\n--- [Agent-Lead (Synthesizer)] Orchestration Transfer ---"
@@ -262,34 +325,90 @@ class SynthesizerAgent:
         
         for attempt in range(3):
             try:
-                response = self.client.models.generate_content(model=self.model_name, contents=messages)
-                if response.text:
+                res_text = self._generate_content(messages)
+                if res_text:
                     yield "log", "\n[Agent-Lead] Report synthesis complete!"
-                    yield "answer", response.text
+                    yield "answer", res_text
                     break
                 else:
                     time.sleep(2)
             except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    time.sleep(15 * (attempt + 1))
-                else:
-                    time.sleep(2)
+                print(f"DEBUG - LLM Exception (Lead): {e}")
+                if "403" in str(e) or "429" in str(e) or "400" in str(e) or "RESOURCE_EXHAUSTED" in str(e) or "PERMISSION_DENIED" in str(e) or "INVALID_ARGUMENT" in str(e) or "API_KEY_INVALID" in str(e):
+                    if hasattr(self.team, "rotate_key"):
+                        yield "log", f"[Agent-Lead] Quota limit/error on current key. Attempting key rotation..."
+                        if self.team.rotate_key():
+                            yield "log", f"[Agent-Lead] Key rotated successfully to key {self.team.current_key_idx + 1}. Retrying request..."
+                            time.sleep(1)
+                            continue
+                time.sleep(2)
 
 
 class MultiAgentTeam:
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
-        if not self.api_key:
+    def __init__(self, api_key: str = None, model_name: str = "gemini-3.6-flash"):
+        api_keys_str = api_key or os.environ.get("GEMINI_API_KEY", "")
+        self.api_keys = [k.strip() for k in api_keys_str.split(",") if k.strip()]
+        if not self.api_keys:
             raise ValueError("GEMINI_API_KEY is missing.")
-        self.client = genai.Client(api_key=self.api_key)
-        self.model_name = "gemini-3.6-flash" # Swapped to stable version
         
-        self.scout = ResearcherAgent(self.client, self.model_name)
-        self.critic = CriticAgent(self.client, self.model_name)
-        self.lead = SynthesizerAgent(self.client, self.model_name)
+        self.current_key_idx = 0
+        self.tried_keys_count = 0
+        self.api_key = self.api_keys[0]
+        self.client = genai.Client(api_key=self.api_key)
+        self.model_name = model_name
+        
+        self.scout = ResearcherAgent(self, self.model_name)
+        self.critic = CriticAgent(self, self.model_name)
+        self.lead = SynthesizerAgent(self, self.model_name)
         
         # TASK 4: Initialize Memory Management
-        self.memory_manager = MemoryManager(self.client, self.model_name)
+        self.memory_manager = MemoryManager(self, self.model_name)
+
+    def rotate_key(self) -> bool:
+        if len(self.api_keys) <= 1:
+            return False
+        
+        self.tried_keys_count += 1
+        if self.tried_keys_count >= len(self.api_keys):
+            return False
+            
+        self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
+        self.api_key = self.api_keys[self.current_key_idx]
+        self.client = genai.Client(api_key=self.api_key)
+        return True
+
+    def generate_content(self, messages: list) -> str:
+        if self.model_name.startswith("groq/"):
+            groq_messages = []
+            for msg in messages:
+                role = msg["role"]
+                if role == "model": role = "assistant"
+                if "parts" in msg:
+                    content = "\n".join([p["text"] for p in msg["parts"]])
+                else:
+                    content = msg.get("content", "")
+                groq_messages.append({"role": role, "content": content})
+            
+            groq_key = os.environ.get("GROQ_API_KEY", "")
+            if not groq_key:
+                raise ValueError("GROQ_API_KEY is missing from environment. Add it to Render environment variables.")
+            
+            import requests
+            headers = {
+                "Authorization": f"Bearer {groq_key}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": self.model_name.split("groq/")[1],
+                "messages": groq_messages,
+                "temperature": 0.1
+            }
+            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data)
+            res.raise_for_status()
+            return res.json()["choices"][0]["message"]["content"]
+        else:
+            response = self.client.models.generate_content(model=self.model_name, contents=messages)
+            return response.text
 
     def run_offline_fallback(self, task: str, session_id: str):
         normalized = task.lower().strip()
@@ -429,6 +548,7 @@ class MultiAgentTeam:
             self.memory_manager.add_entry(session_id, task, final_report)
 
     def run_stream(self, task: str, session_id: str, max_turns: int = 5, force_tool: str = None, chaos_mode: bool = False):
+        self.tried_keys_count = 0
         # 0. Retrieve Context (Long-term / Short-term memory)
         context, count, has_summary = self.memory_manager.get_context_string(session_id)
         
