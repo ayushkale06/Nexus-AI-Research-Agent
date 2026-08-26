@@ -10,8 +10,7 @@ app = FastAPI()
 # This is our custom HTML/CSS/JS frontend!
 
 
-html_content = """
-<!DOCTYPE html>
+html_content = """\n<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -899,15 +898,15 @@ html_content = """
                 sessions.forEach(sess => {
                     const activeClass = sess.session_id === SESSION_ID ? 'active' : '';
                     const div = document.createElement('div');
-                    div.className = `session-item \${activeClass}`;
+                    div.className = `session-item ${activeClass}`;
                     div.onclick = () => selectSession(sess.session_id);
                     
                     div.innerHTML = `
                         <div class="session-title">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                            \${sess.title}
+                            ${sess.title}
                         </div>
-                        <button class="session-delete" onclick="event.stopPropagation(); deleteSession('\${sess.session_id}')">
+                        <button class="session-delete" onclick="event.stopPropagation(); deleteSession('${sess.session_id}')">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     `;
@@ -941,7 +940,7 @@ html_content = """
             localStorage.setItem('nexus_session_id', SESSION_ID);
             
             try {
-                const res = await fetch(`/sessions/\${sessionId}`);
+                const res = await fetch(`/sessions/${sessionId}`);
                 const data = await res.json();
                 
                 clearChat();
@@ -954,7 +953,7 @@ html_content = """
                         // User message
                         const userRow = document.createElement('div');
                         userRow.className = 'message-row user';
-                        userRow.innerHTML = `<div class="bubble-content">\${entry.task}</div>`;
+                        userRow.innerHTML = `<div class="bubble-content">${entry.task}</div>`;
                         wrapper.appendChild(userRow);
                         
                         // Agent message
@@ -962,7 +961,7 @@ html_content = """
                         agentRow.className = 'message-row agent';
                         agentRow.innerHTML = `
                             <div class="avatar agent-avatar">N</div>
-                            <div class="bubble-content markdown-body">\${marked.parse(entry.answer)}</div>
+                            <div class="bubble-content markdown-body">${marked.parse(entry.answer)}</div>
                         `;
                         wrapper.appendChild(agentRow);
                         addCodeCopyButtons(agentRow);
@@ -978,7 +977,7 @@ html_content = """
         // Delete a session
         async function deleteSession(sessionId) {
             try {
-                await fetch(`/sessions/\${sessionId}`, { method: 'DELETE' });
+                await fetch(`/sessions/${sessionId}`, { method: 'DELETE' });
                 if (sessionId === SESSION_ID) {
                     await startNewSession();
                 } else {
@@ -1048,7 +1047,7 @@ html_content = """
             const wrapper = document.getElementById('chat-wrapper');
             const userRow = document.createElement('div');
             userRow.className = 'message-row user';
-            userRow.innerHTML = `<div class="bubble-content">\${text}</div>`;
+            userRow.innerHTML = `<div class="bubble-content">${text}</div>`;
             wrapper.appendChild(userRow);
             
             const agentRow = document.createElement('div');
@@ -1102,33 +1101,42 @@ html_content = """
                 let logText = "";
                 let isThoughtOpen = true;
                 
+                let buffer = "";
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
                     
-                    const chunks = decoder.decode(value).split('\n\n');
-                    for (const chunk of chunks) {
-                        if (chunk.startsWith('data: ')) {
-                            const data = JSON.parse(chunk.substring(6));
-                            if (data.type === 'log') {
-                                logText += data.text + "\n";
-                                thoughtContent.innerText = logText;
-                                thoughtContent.scrollTop = thoughtContent.scrollHeight;
-                                scrollToBottom();
-                            } else if (data.type === 'memory') {
-                                const memCore = document.getElementById('memory-core');
-                                const memText = document.getElementById('memory-text');
-                                memCore.classList.add('active');
-                                memText.innerText = "ACTIVE: " + data.text.toUpperCase();
-                                setTimeout(() => { memCore.classList.remove('active'); }, 5000);
-                            } else if (data.type === 'answer') {
-                                if (isThoughtOpen) {
-                                    thoughtAccordion.removeAttribute('open');
-                                    isThoughtOpen = false;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // keep last incomplete line
+                    
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(trimmed.substring(6));
+                                if (data.type === 'log') {
+                                    logText += data.text + "\n";
+                                    thoughtContent.innerText = logText;
+                                    thoughtContent.scrollTop = thoughtContent.scrollHeight;
+                                    scrollToBottom();
+                                } else if (data.type === 'memory') {
+                                    const memCore = document.getElementById('memory-core');
+                                    const memText = document.getElementById('memory-text');
+                                    memCore.classList.add('active');
+                                    memText.innerText = "ACTIVE: " + data.text.toUpperCase();
+                                    setTimeout(() => { memCore.classList.remove('active'); }, 5000);
+                                } else if (data.type === 'answer') {
+                                    if (isThoughtOpen) {
+                                        thoughtAccordion.removeAttribute('open');
+                                        isThoughtOpen = false;
+                                    }
+                                    finalAnswerBox.innerHTML = marked.parse(data.text);
+                                    addCodeCopyButtons(finalAnswerBox);
+                                    scrollToBottom();
                                 }
-                                finalAnswerBox.innerHTML = marked.parse(data.text);
-                                addCodeCopyButtons(finalAnswerBox);
-                                scrollToBottom();
+                            } catch (parseError) {
+                                console.warn("Failed to parse JSON line:", trimmed, parseError);
                             }
                         }
                     }
@@ -1170,8 +1178,7 @@ html_content = """
         }
     </script>
 </body>
-</html>
-"""
+</html>\n"""
 
 @app.get("/")
 async def get_frontend():
