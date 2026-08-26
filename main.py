@@ -1107,7 +1107,7 @@ html_content = """\n<!DOCTYPE html>
                     if (done) break;
                     
                     buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
+                    const lines = buffer.split('\\n');
                     buffer = lines.pop(); // keep last incomplete line
                     
                     for (const line of lines) {
@@ -1116,7 +1116,7 @@ html_content = """\n<!DOCTYPE html>
                             try {
                                 const data = JSON.parse(trimmed.substring(6));
                                 if (data.type === 'log') {
-                                    logText += data.text + "\n";
+                                    logText += data.text + "\\n";
                                     thoughtContent.innerText = logText;
                                     thoughtContent.scrollTop = thoughtContent.scrollHeight;
                                     scrollToBottom();
@@ -1146,7 +1146,7 @@ html_content = """\n<!DOCTYPE html>
                     speakMascot("Completed! Strategic report generated.", 3000);
                 }
             } catch (e) {
-                thoughtContent.innerText += "\n[CRITICAL FAILURE] Interface connection interrupted: " + e;
+                thoughtContent.innerText += "\\n[CRITICAL FAILURE] Interface connection interrupted: " + e;
             } finally {
                 isGenerating = false;
                 await loadSessions();
