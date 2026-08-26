@@ -10,8 +10,9 @@ load_dotenv()
 
 class MemoryManager:
     """Handles short-term and long-term memory persistence with Rolling Summary Compression and Session IDs."""
-    def __init__(self, client, filepath="agent_memory.json"):
+    def __init__(self, client, model_name="gemini-3.6-flash", filepath="agent_memory.json"):
         self.client = client
+        self.model_name = model_name
         self.filepath = filepath
         self.db = self._load() # Format: {"session_id": {"history": [], "summary": ""}}
 
@@ -65,7 +66,7 @@ class MemoryManager:
         current_summary = self.db[session_id]["summary"]
         prompt = f"Update this memory summary: '{current_summary}'. Integrate this new past interaction -> User asked: '{old_entry['task']}'. AI replied: '{old_entry['answer'][:300]}'. Keep the final summary extremely dense and concise."
         try:
-            res = self.client.models.generate_content(model="gemini-3.5-flash-lite", contents=prompt)
+            res = self.client.models.generate_content(model=self.model_name, contents=prompt)
             self.db[session_id]["summary"] = res.text.strip()
         except Exception:
             pass # Ignore rate limits for background compression
@@ -78,8 +79,9 @@ You run in a loop of Thought, Action, PAUSE, Observation.
 CRITICAL RULES:
 1. If the user's question can be answered using the PREVIOUS CONVERSATION CONTEXT (like remembering their name), DO NOT use any tools. Just immediately output: 'Answer: [the relevant context]'.
 2. If the user just says hello or greets you (e.g. "hi", "hello", "hie"), DO NOT use tools. Just immediately output: 'Answer: Hello! I am Nexus, your AI research assistant. How can I help you today?'.
-3. If the user asks for new information, use your tools to find it. When you have enough raw data, output an 'Answer:' containing all the raw facts.
-4. Use Thought to describe your thoughts. Use Action to run a tool. You must PAUSE after your Action.
+3. If the user asks a general question, coding task, creative writing task, or general discussion that does NOT require external data search, DO NOT use any tools. Just immediately output: 'Answer: [your complete response]'.
+4. If the user asks for new information or real-time research, use your tools to find it. When you have enough raw data, output an 'Answer:' containing all the raw facts.
+5. Use Thought to describe your thoughts. Use Action to run a tool. You must PAUSE after your Action.
 
 """
     if force_tool == "wiki_search":
@@ -287,7 +289,7 @@ class MultiAgentTeam:
         self.lead = SynthesizerAgent(self.client, self.model_name)
         
         # TASK 4: Initialize Memory Management
-        self.memory_manager = MemoryManager(self.client)
+        self.memory_manager = MemoryManager(self.client, self.model_name)
 
     def run_offline_fallback(self, task: str, session_id: str):
         normalized = task.lower().strip()

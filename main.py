@@ -16,547 +16,1080 @@ html_content = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus | Autonomous AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>Nexus.AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
         :root {
-            --bg-dark: #000905;
-            --bg-light: #021a10;
-            --glass-green: rgba(16, 185, 129, 0.08);
-            --glass-green-hover: rgba(16, 185, 129, 0.2);
-            --border-green: rgba(52, 211, 153, 0.3);
-            --text-main: #f0fdf4;
+            --bg-dark: #171717;
+            --bg-sidebar: #0d0d0d;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #e3e3e3;
+            --text-muted: #b4b4b4;
             --accent: #10b981;
             --accent-glow: #34d399;
-        }
-        
-        body { 
-            font-family: 'Space Grotesk', sans-serif;
-            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-light) 100%);
-            color: var(--text-main); margin: 0; padding: 0; 
-            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+            --bubble-user: #2f2f2f;
+            --bubble-agent: transparent;
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
-        /* Interactive Canvas Background */
-        #particle-canvas {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 0; pointer-events: none; opacity: 0.7;
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        /* Ambient Volumetric Orbs */
-        .ambient-orb { position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.5; z-index: 0; animation: floatOrb 12s ease-in-out infinite alternate; pointer-events: none; }
-        .orb-1 { width: 500px; height: 500px; background: rgba(16, 185, 129, 0.25); top: -150px; left: -100px; }
-        .orb-2 { width: 600px; height: 600px; background: rgba(2, 132, 199, 0.15); bottom: -200px; right: -100px; animation-delay: -5s; }
-        @keyframes floatOrb { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(60px, 60px) scale(1.2); } }
-
-        /* Glassmorphism Navbar */
-        .navbar { display: flex; align-items: center; padding: 20px 40px; background: rgba(0,9,5,0.6); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-green); flex-shrink: 0; z-index: 10; box-shadow: 0 4px 30px rgba(16,185,129,0.1); }
-        .navbar h1 { font-size: 26px; font-weight: 700; margin: 0; color: #fff; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 20px var(--accent-glow); }
-        .navbar h1 span { color: var(--accent); }
-        .navbar .badge { margin-left: 15px; background: rgba(16,185,129,0.1); color: var(--accent-glow); font-size: 10px; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--accent); text-transform: uppercase; font-weight: 700; letter-spacing: 2px; animation: pulseGlow 2s infinite; }
-        
-        @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 8px rgba(16,185,129,0.2), inset 0 0 8px rgba(16,185,129,0.2); }
-            50% { box-shadow: 0 0 20px rgba(16,185,129,0.6), inset 0 0 15px rgba(16,185,129,0.4); }
+        /* Sidebar Styling */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 100;
         }
 
-        .chat-container { flex: 1; width: 100%; overflow-y: auto; scroll-behavior: smooth; display: flex; flex-direction: column; align-items: center; padding: 40px 0; z-index: 1; position: relative;}
-        .chat-container::-webkit-scrollbar { width: 6px; }
-        .chat-container::-webkit-scrollbar-track { background: transparent; }
-        .chat-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; box-shadow: 0 0 10px var(--accent); }
-
-        .message-wrapper { width: 100%; max-width: 1100px; display: flex; gap: 20px; margin-bottom: 40px; animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(40px) scale(0.98); padding: 0 20px; box-sizing: border-box; }
-        .message-wrapper.user { flex-direction: row-reverse; }
-        
-        .avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; font-weight: 700; background: rgba(0,0,0,0.5); border: 1px solid var(--border-green); box-shadow: 0 0 20px rgba(16,185,129,0.2); backdrop-filter: blur(10px); position: relative; overflow: hidden; z-index: 2;}
-        .user .avatar { color: #fff; border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); background: rgba(2, 132, 199, 0.1);}
-        .user .avatar::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.5); pointer-events: none;}
-        .agent .avatar { color: var(--accent-glow); border-color: var(--accent); box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);}
-        .agent .avatar::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.6); pointer-events: none;}
-
-        .bubble { flex: 1; max-width: 95%; padding: 26px 34px; border-radius: 16px; font-size: 16px; line-height: 1.8; font-weight: 400; background: rgba(2, 26, 16, 0.6); backdrop-filter: blur(16px); border: 1px solid var(--border-green); box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1); }
-        .user .bubble { border-radius: 20px 4px 20px 20px; margin-left: auto; background: rgba(2, 132, 199, 0.08); border-color: rgba(56, 189, 248, 0.2); box-shadow: 0 15px 35px rgba(0,0,0,0.3);}
-        .agent .bubble { border-radius: 4px 20px 20px 20px; border: 1px solid rgba(16, 185, 129, 0.4); border-left: 4px solid var(--accent); background: linear-gradient(135deg, rgba(2, 26, 16, 0.9) 0%, rgba(16, 185, 129, 0.1) 100%); box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 20px rgba(16,185,129,0.15), inset 0 0 40px rgba(16,185,129,0.05); }
-
-        /* Memory Core Visualizer */
-        .memory-core { position: absolute; top: 30px; right: 40px; display: flex; align-items: center; gap: 10px; background: rgba(0, 15, 8, 0.8); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 20px; font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 1px; box-shadow: 0 0 20px rgba(0,0,0,0.5); backdrop-filter: blur(10px); transition: all 0.3s; z-index: 100;}
-        .memory-core.active { border-color: var(--accent-glow); box-shadow: 0 0 20px rgba(16,185,129,0.6), inset 0 0 10px rgba(16,185,129,0.2); text-shadow: 0 0 10px rgba(16,185,129,0.5); transform: scale(1.05); }
-        .memory-pulse { width: 8px; height: 8px; background: rgba(16,185,129,0.3); border-radius: 50%; box-shadow: 0 0 5px rgba(16,185,129,0.2); }
-        .memory-core.active .memory-pulse { background: var(--accent-glow); box-shadow: 0 0 10px var(--accent-glow); animation: flash 0.5s infinite alternate; }
-        @keyframes flash { from { opacity: 0.5; } to { opacity: 1; } }
-
-        /* Hacker/Terminal Reasoning Panel */
-        .reasoning-panel { margin-bottom: 28px; border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; background-color: rgba(0,5,2,0.9); overflow: hidden; box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(16,185,129,0.15); backdrop-filter: blur(5px); position: relative; }
-        .reasoning-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(16,185,129,0.04) 2px, rgba(16,185,129,0.04) 4px); pointer-events: none; z-index: 1;}
-        .reasoning-panel::after { content: ''; position: absolute; top: -100%; left: 0; right: 0; height: 100%; background: linear-gradient(to bottom, transparent, rgba(16,185,129,0.15) 90%, transparent); animation: matrixScan 4s linear infinite; pointer-events: none; z-index: 2;}
-        .reasoning-header { padding: 10px 18px; font-size: 11px; color: var(--accent-glow); background: rgba(16,185,129,0.15); display: flex; align-items: center; gap: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; border-bottom: 1px solid rgba(16,185,129,0.3); position: relative; z-index: 3;}
-        .spinner { width: 14px; height: 14px; border: 2px solid transparent; border-top-color: var(--accent-glow); border-right-color: var(--accent-glow); border-radius: 50%; animation: spin 0.6s linear infinite; margin-left: auto; }
-        .reasoning-content { padding: 20px; font-family: 'Courier New', monospace; font-size: 14px; color: #6ee7b7; max-height: 280px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; text-shadow: 0 0 10px rgba(16,185,129,0.5); position: relative; z-index: 3;}
-        .reasoning-content::-webkit-scrollbar { width: 6px; }
-        .reasoning-content::-webkit-scrollbar-track { background: transparent; }
-        .reasoning-content::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.6); border-radius: 4px; }
-        
-        /* Ultra Sleek Input Area */
-        .input-container { flex-shrink: 0; width: 100%; display: flex; justify-content: center; padding: 30px 20px; background: linear-gradient(0deg, rgba(0,9,5,0.9) 0%, rgba(0,9,5,0) 100%); z-index: 10; position: relative;}
-        .input-box { width: 100%; max-width: 1100px; display: flex; align-items: center; background: rgba(2, 26, 16, 0.8); border: 1px solid var(--border-green); border-radius: 16px; padding: 8px 8px 8px 16px; transition: all 0.3s; box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(16,185,129,0.05); backdrop-filter: blur(20px); position: relative; overflow: visible;}
-        .input-box::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, var(--accent), transparent, var(--accent-glow), transparent); z-index: -1; border-radius: 18px; filter: blur(10px); opacity: 0.2; animation: rotateBorder 4s linear infinite; }
-        .input-box:focus-within::before { opacity: 0.6; }
-        .input-box:focus-within { border-color: var(--accent-glow); box-shadow: 0 0 30px rgba(16,185,129,0.2), inset 0 0 20px rgba(16,185,129,0.1); transform: translateY(-2px);}
-        
-        #tools-btn { background: rgba(16,185,129,0.1); border: 1px solid var(--border-green); color: var(--accent-glow); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; margin-right: 12px; flex-shrink: 0; }
-        #tools-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px var(--accent-glow); transform: rotate(90deg) scale(1.05); }
-        #tools-btn svg { stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
-        
-        #tools-menu { position: absolute; bottom: 75px; left: 0; background: rgba(2, 26, 16, 0.95); border: 1px solid var(--accent); border-radius: 16px; padding: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 30px rgba(16,185,129,0.2); backdrop-filter: blur(25px); transform: translateY(10px) scale(0.95); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; gap: 10px; z-index: 100; min-width: 220px; transform-origin: bottom left; }
-        #tools-menu.show { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
-        .tools-menu-header { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.2); padding-bottom: 8px; }
-        .tool-item { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid transparent; transition: all 0.2s; cursor: pointer; }
-        .tool-item span { font-size: 22px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); }
-        .tool-item strong { color: var(--text-main); font-size: 14px; display: block; letter-spacing: 0.5px; }
-        .tool-item small { color: var(--accent-glow); font-size: 11px; }
-        .tool-item:hover { background: rgba(16,185,129,0.1); border-color: var(--border-green); transform: translateX(5px); }
-        .tool-item.active-tool { background: rgba(16,185,129,0.2); border-color: var(--accent-glow); box-shadow: 0 0 15px rgba(16,185,129,0.3); }
-
-        .input-box input { flex: 1; background: transparent; border: none; color: white; font-size: 16px; font-weight: 400; outline: none; font-family: 'Space Grotesk', sans-serif; padding: 14px 0; letter-spacing: 0.5px;}
-        .input-box input::placeholder { color: rgba(236,253,245,0.3); }
-        .input-box button.send-btn { background: var(--accent); color: #000; border: none; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; margin-left: 10px; flex-shrink: 0; box-shadow: 0 0 20px rgba(16,185,129,0.4);}
-        .input-box button.send-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(52,211,153,0.8); background: #fff;}
-        .input-box button.send-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; margin-left: -2px; }
-        
-        /* Markdown */
-        .markdown-body h1, .markdown-body h2, .markdown-body h3 { margin-top: 0; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
-        .markdown-body h1 { font-size: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 24px; color: var(--accent-glow); text-shadow: 0 0 15px rgba(16,185,129,0.3);}
-        .markdown-body p, .markdown-body li { color: #d1fae5; font-size: 16px; font-weight: 300; line-height: 1.8; letter-spacing: 0.3px;}
-        .markdown-body ul { padding-left: 20px; margin-bottom: 24px; }
-        .markdown-body strong { color: #fff; font-weight: 600; text-shadow: 0 0 10px rgba(255,255,255,0.3);}
-        
-        /* Animations */
-        @keyframes slideUp { to { opacity: 1; transform: translateY(0) scale(1); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes matrixScan { 0% { top: -100%; } 100% { top: 100%; } }
-        @keyframes rotateBorder { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        
-        /* Memory Core Visualizer */
-        .memory-core { position: absolute; top: 30px; right: 40px; display: flex; align-items: center; gap: 10px; background: rgba(0, 15, 8, 0.8); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 20px; font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 1px; box-shadow: 0 0 20px rgba(0,0,0,0.5); backdrop-filter: blur(10px); transition: all 0.3s; z-index: 100; opacity: 0; pointer-events: none;}
-        .memory-core.active { opacity: 1; border-color: var(--accent-glow); box-shadow: 0 0 20px rgba(16,185,129,0.6), inset 0 0 10px rgba(16,185,129,0.2); text-shadow: 0 0 10px rgba(16,185,129,0.5); transform: scale(1.05); }
-        .memory-pulse { width: 8px; height: 8px; background: rgba(16,185,129,0.3); border-radius: 50%; box-shadow: 0 0 5px rgba(16,185,129,0.2); }
-        .memory-core.active .memory-pulse { background: var(--accent-glow); box-shadow: 0 0 10px var(--accent-glow); animation: flash 0.5s infinite alternate; }
-        @keyframes flash { from { opacity: 0.5; } to { opacity: 1; } }
-        
-        /* Holographic Welcome Screen */
-        .welcome { text-align: center; margin: auto; padding-top: 5vh; max-width: 1000px; z-index: 2; position: relative; }
-        
-        .hologram-text {
-            font-size: 4vw; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 6px; 
-            color: #fff; text-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent), 0 0 40px var(--accent-glow);
-            animation: hologramFlicker 4s infinite;
+        .sidebar-header {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        @keyframes hologramFlicker {
-            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; text-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent), 0 0 40px var(--accent-glow); }
-            20%, 24%, 55% { opacity: 0.5; text-shadow: none; }
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--accent-glow);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .welcome p { font-size: 16px; color: rgba(167,243,208,0.7); margin-top: 20px; font-weight: 300; letter-spacing: 2px;}
-        .cursor { display: inline-block; width: 8px; height: 1em; background: var(--accent-glow); animation: blink 1s step-end infinite; vertical-align: bottom; margin-left: 8px; box-shadow: 0 0 10px var(--accent-glow);}
-        @keyframes blink { 50% { opacity: 0; } }
-        
-        /* Cyberpunk Suggestion Chips */
-        .suggestions { display: flex; gap: 16px; justify-content: center; margin-top: 60px; flex-wrap: wrap; opacity: 0; transition: opacity 1s ease-in; }
-        .chip { background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: var(--text-main); padding: 14px 28px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 0 10px rgba(16,185,129,0.05); text-transform: uppercase; letter-spacing: 2px; position: relative; overflow: hidden;}
-        .chip::before { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(16,185,129,0.4), transparent); transform: skewX(-20deg); transition: 0.5s; }
-        .chip:hover { border-color: var(--accent-glow); box-shadow: 0 4px 20px rgba(16,185,129,0.3), inset 0 0 15px rgba(16,185,129,0.2); transform: translateY(-3px);}
-        .chip:hover::before { left: 150%; }
-        .chip:hover { background: rgba(16,185,129,0.1); border-color: var(--accent-glow); transform: translateY(-4px); box-shadow: 0 10px 30px rgba(16,185,129,0.2); color: #fff; }
-
-        /* --- ROAMING REAL 3D ROBOT CSS --- */
-        #side-robot {
-            position: fixed;
-            top: 50%; left: 50%; transform: translate(-50%, -50%);
-            display: flex; align-items: center; gap: 20px;
-            z-index: 9999; pointer-events: none; 
-            transition: all 1.8s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        
-        #robot-img {
-            width: 160px; height: 160px;
-            animation: floatRobot 4s ease-in-out infinite;
-            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(16,185,129,0.4));
-            background-color: transparent;
-            pointer-events: auto; /* allow user to interact with the 3D model */
+        .sidebar-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: white;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
         }
 
-        @keyframes floatRobot {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+        .sidebar-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.25);
         }
 
-        .robot-bubble {
-            background: rgba(2, 26, 16, 0.85); backdrop-filter: blur(20px);
-            color: var(--text-main); padding: 16px 24px; border-radius: 12px 12px 12px 0;
-            font-weight: 600; font-size: 13px; max-width: 250px;
+        .sidebar-sessions {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-sessions::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-sessions::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .session-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            cursor: pointer;
+            color: #d1d1d1;
+            transition: background 0.2s;
+        }
+
+        .session-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .session-item.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-weight: 500;
+        }
+
+        .session-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 170px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .session-delete {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s;
+        }
+
+        .session-item:hover .session-delete {
+            opacity: 0.6;
+        }
+
+        .session-delete:hover {
+            opacity: 1 !important;
+            color: #f87171;
+            background-color: rgba(248, 113, 113, 0.1);
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .settings-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .settings-select {
+            background: #2a2a2a;
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3e3e3e;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(14px);
+        }
+
+        /* Main Content Panel */
+        .main-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Top Header Navigation */
+        .top-nav {
+            height: 56px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            flex-shrink: 0;
+            background-color: var(--bg-dark);
+        }
+
+        .model-pill {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .model-pulse-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        /* Memory Alert Notification */
+        .memory-core {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-glow);
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s;
+        }
+
+        .memory-core.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .memory-pulse {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent-glow);
+            border-radius: 50%;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.4; }
+            to { opacity: 1; }
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 24px;
+        }
+
+        .chat-area::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-area::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .chat-wrapper {
+            width: 100%;
+            max-width: 800px;
+            padding: 0 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        /* Message Bubbles */
+        .message-row {
+            display: flex;
+            gap: 16px;
+            width: 100%;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .avatar.user-avatar {
+            background: #4f46e5;
+            color: white;
+            order: 2;
+        }
+
+        .avatar.agent-avatar {
+            background: rgba(16, 185, 129, 0.15);
             border: 1px solid var(--accent);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 15px rgba(16,185,129,0.2);
-            opacity: 0; transform: scale(0.8) translateX(-20px);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            letter-spacing: 1px; line-height: 1.5;
+            color: var(--accent-glow);
         }
-        .robot-bubble.active {
-            opacity: 1; transform: scale(1) translateX(0);
+
+        .bubble-content {
+            max-width: 85%;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .user .bubble-content {
+            background-color: var(--bubble-user);
+            padding: 10px 16px;
+            border-radius: 18px 18px 2px 18px;
+            color: white;
+        }
+
+        .agent .bubble-content {
+            flex: 1;
+            color: var(--text-main);
+        }
+
+        /* Collapsible Reasoning Process Accordion */
+        .thought-accordion {
+            border-left: 2px solid rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.03);
+            margin: 12px 0;
+            border-radius: 0 6px 6px 0;
+            overflow: hidden;
+        }
+
+        .thought-accordion summary {
+            padding: 10px 14px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--accent-glow);
+            cursor: pointer;
+            outline: none;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .thought-accordion summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .thought-accordion summary::before {
+            content: '▶';
+            font-size: 9px;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .thought-accordion[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .reasoning-content {
+            padding: 0 14px 14px 14px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: #a7f3d0;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        /* Welcome Hologram Panel */
+        .welcome-panel {
+            margin: auto;
+            text-align: center;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 8vh;
+        }
+
+        .welcome-panel h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #a7f3d0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .welcome-panel p {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* Suggestion Prompt Cards Grid */
+        .suggestion-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 24px;
+            width: 100%;
+        }
+
+        .suggestion-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-card:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(16, 185, 129, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .suggestion-card strong {
+            display: block;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .suggestion-card span {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            display: block;
+        }
+
+        /* Code Block Styling */
+        pre {
+            background: #0f0f0f;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            position: relative;
+            margin: 16px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: #67e8f9;
+        }
+
+        /* Copy Button for Code Blocks */
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* Markdown Styling inside Agent bubbles */
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            color: white;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        .markdown-body p {
+            margin-bottom: 16px;
+        }
+
+        .markdown-body ul, .markdown-body ol {
+            padding-left: 20px;
+            margin-bottom: 16px;
+        }
+
+        .markdown-body li {
+            margin-bottom: 8px;
+        }
+
+        /* Input Panel */
+        .input-panel {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 24px 24px 24px;
+            box-sizing: border-box;
+            background: linear-gradient(180deg, rgba(23, 23, 23, 0) 0%, rgba(23, 23, 23, 1) 40%);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .input-dock {
+            width: 100%;
+            max-width: 800px;
+            background-color: #262626;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-dock:focus-within {
+            border-color: rgba(16, 185, 129, 0.4);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.05);
+        }
+
+        .input-dock textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            font-family: var(--font-main);
+            font-size: 15px;
+            resize: none;
+            max-height: 200px;
+            min-height: 24px;
+            padding: 8px 0;
+            line-height: 1.5;
+        }
+
+        .input-dock textarea::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .send-btn {
+            background-color: var(--accent);
+            color: black;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            background-color: var(--accent-glow);
+            transform: scale(1.05);
+        }
+
+        .send-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* --- Collapsible CSS 3D Robot Mascot (Bottom-Right) --- */
+        #mascot-widget {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 12px;
+            z-index: 1000;
+            pointer-events: none;
+            display: none; /* Hidden by default */
+        }
+
+        #mascot-model {
+            width: 80px;
+            height: 80px;
+            animation: float 3s ease-in-out infinite alternate;
+            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        @keyframes float {
+            from { transform: translateY(0); }
+            to { transform: translateY(-8px); }
+        }
+
+        .mascot-bubble {
+            background: #262626;
+            border: 1px solid var(--border-color);
+            border-radius: 12px 12px 0 12px;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            color: var(--text-main);
+            max-width: 200px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .mascot-bubble.show {
+            opacity: 1;
         }
     </style>
 </head>
 <body>
-    <!-- Ambient Volumetric Background Orbs -->
-    <div class="ambient-orb orb-1"></div>
-    <div class="ambient-orb orb-2"></div>
 
-    <!-- Interactive Particle Network -->
-    <canvas id="particle-canvas"></canvas>
-
-    <div class="navbar">
-        <h1>NEXUS<span>.AI</span></h1>
-        <span class="badge">System Online</span>
-    </div>
-    
-    <div class="memory-core" id="memory-core">
-        <div class="memory-pulse"></div>
-        <span id="memory-text">MEMORY: STANDBY</span>
-    </div>
-    
-    <div class="chat-container" id="chat">
-        <div class="welcome" id="welcome-msg">
-            <h1 class="hologram-text" id="typed-text">NEXUS.AI</h1>
-            <p id="subtitle-text"><span class="cursor"></span></p>
-            
-            <div class="suggestions" id="suggestions">
-                <div class="chip" onclick="setPrompt('Analyze AI healthcare startups')">Healthcare Sector</div>
-                <div class="chip" onclick="setPrompt('Research OpenAI patents')">OpenAI Patents</div>
-                <div class="chip" onclick="setPrompt('Find autonomous vehicle news')">Auto Vehicles</div>
+    <!-- Left Sidebar Panel -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Nexus.AI</h2>
+            <button id="new-chat-btn" class="sidebar-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                New chat
+            </button>
+        </div>
+        <div class="sidebar-sessions" id="sidebar-sessions">
+            <!-- Active sessions list -->
+        </div>
+        <div class="sidebar-footer">
+            <div class="settings-item">
+                <label>Chaos Mode</label>
+                <label class="switch">
+                    <input type="checkbox" id="chaos-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-item">
+                <label>Show Mascot</label>
+                <label class="switch">
+                    <input type="checkbox" id="mascot-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-item">
+                <label>Forced Tool</label>
+                <select id="tool-select" class="settings-select">
+                    <option value="">None (Auto)</option>
+                    <option value="wiki_search">Wikipedia</option>
+                    <option value="arxiv_search">ArXiv</option>
+                    <option value="github_search">GitHub</option>
+                </select>
             </div>
         </div>
     </div>
-    
-    <div class="input-container">
-        <div class="input-box">
-            <button id="tools-btn" title="View Connected APIs" onclick="toggleToolsMenu(event)">
-                <svg viewBox="0 0 24 24" width="20" height="20"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            </button>
+
+    <!-- Main Chat Workspace -->
+    <div class="main-panel">
+        
+        <!-- Navigation Top Bar -->
+        <div class="top-nav">
+            <div class="model-pill">
+                <div class="model-pulse-dot"></div>
+                Gemini 3.6 Flash
+            </div>
             
-            <div id="tools-menu">
-                <div class="tools-menu-header">Force API Mode (Click to select)</div>
-                <div class="tool-item active-tool" id="tool-auto" onclick="setForcedTool(null, this)">
-                    <span>⚡</span>
-                    <div>
-                        <strong>Auto Mode</strong>
-                        <small>AI chooses dynamically</small>
-                    </div>
-                </div>
-                <div class="tool-item" onclick="setForcedTool('wiki_search', this)">
-                    <span>🌐</span>
-                    <div>
-                        <strong>Wikipedia API</strong>
-                        <small>Only use Wikipedia</small>
-                    </div>
-                </div>
-                <div class="tool-item" onclick="setForcedTool('arxiv_search', this)">
-                    <span>📚</span>
-                    <div>
-                        <strong>ArXiv Database</strong>
-                        <small>Only search ArXiv</small>
-                    </div>
-                </div>
-                <div class="tool-item" onclick="setForcedTool('github_search', this)">
-                    <span>💻</span>
-                    <div>
-                        <strong>GitHub REST API</strong>
-                        <small>Only search GitHub</small>
+            <div class="memory-core" id="memory-core">
+                <div class="memory-pulse"></div>
+                <span id="memory-text">MEMORY RETRIEVED</span>
+            </div>
+        </div>
+        
+        <!-- Message list space -->
+        <div class="chat-area" id="chat-area">
+            <div class="chat-wrapper" id="chat-wrapper">
+                
+                <!-- Welcome View -->
+                <div class="welcome-panel" id="welcome-panel">
+                    <h1>Nexus.AI</h1>
+                    <p>Your self-healing, multi-agent assistant for coding, research, and analysis.</p>
+                    
+                    <div class="suggestion-grid">
+                        <div class="suggestion-card" onclick="triggerSuggestion('Find autonomous vehicle news')">
+                            <strong>Research vehicles</strong>
+                            <span>Search Wikipedia for autonomous driving updates</span>
+                        </div>
+                        <div class="suggestion-card" onclick="triggerSuggestion('Explain topological qubits')">
+                            <strong>Explain quantum</strong>
+                            <span>Get definitions and physics parameters</span>
+                        </div>
+                        <div class="suggestion-card" onclick="triggerSuggestion('Write a quick Python script to compress files')">
+                            <strong>Write code</strong>
+                            <span>Draft a script to handle rolling compressions</span>
+                        </div>
+                        <div class="suggestion-card" onclick="triggerSuggestion('AI healthcare startup landscape')">
+                            <strong>BioTech analysis</strong>
+                            <span>Get reports on AlphaFold and medical approvals</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="tools-menu-header" style="margin-top: 10px; color: #ef4444; border-bottom-color: rgba(239, 68, 68, 0.2);">Task 5: Adversarial Test</div>
-                <div class="tool-item" id="chaos-btn" onclick="toggleChaosMode(this)">
-                    <span>⚠️</span>
-                    <div>
-                        <strong style="color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);">Chaos Mode</strong>
-                        <small style="color: #fca5a5;">Simulate 503 API Failures</small>
-                    </div>
-                </div>
             </div>
-
-            <input type="text" id="prompt" placeholder="Initialize query sequence..." autocomplete="off" onkeypress="handleKeyPress(event)">
-            <button class="send-btn" onclick="sendMessage()">
-                <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            </button>
         </div>
+        
+        <!-- Sticky Bottom Input Dock -->
+        <div class="input-panel">
+            <div class="input-dock">
+                <textarea id="prompt" placeholder="Message Nexus..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
+                <button class="send-btn" onclick="sendMessage()" id="send-btn">
+                    <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
+        </div>
+        
     </div>
 
-    <!-- The Roaming 3D AI Core -->
-    <div id="side-robot">
-        <model-viewer id="robot-img" 
-            src="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb" 
-            autoplay 
-            auto-rotate
-            rotation-per-second="10deg"
-            camera-orbit="auto auto auto"
-            disable-zoom
-            shadow-intensity="1">
-        </model-viewer>
-        <div class="robot-bubble" id="robot-bubble">Initializing...</div>
+    <!-- 3D Mascot Widget -->
+    <div id="mascot-widget">
+        <div class="mascot-bubble" id="mascot-bubble">Awaiting your command, Commander.</div>
+        <model-viewer id="mascot-model" 
+                      src="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb" 
+                      ar 
+                      alt="Robot Mascot" 
+                      auto-rotate 
+                      camera-controls 
+                      interaction-prompt="none"
+                      animation-name="Wave" 
+                      autoplay></model-viewer>
     </div>
 
     <script>
-        // TASK 4: Session Persistence
-        let SESSION_ID = localStorage.getItem('nexus_session_id');
-        if (!SESSION_ID) {
-            SESSION_ID = "sess_" + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('nexus_session_id', SESSION_ID);
-        }
-        
-        // --- Tools Menu Logic ---
-        let currentForcedTool = null;
+        let SESSION_ID = "";
         let isChaosMode = false;
-        
-        function toggleChaosMode(btn) {
-            isChaosMode = !isChaosMode;
-            if (isChaosMode) {
-                btn.classList.add('active-tool');
-                btn.style.boxShadow = "0 0 15px rgba(239, 68, 68, 0.5)";
-                updateRobotMsg("WARNING: Adversarial Chaos Mode Activated.", 4000);
-            } else {
-                btn.classList.remove('active-tool');
-                btn.style.boxShadow = "none";
-                updateRobotMsg("Chaos Mode Deactivated.", 3000);
-            }
-            document.getElementById('tools-menu').classList.remove('show');
-        }
+        let currentForcedTool = "";
+        let isGenerating = false;
 
-        function setForcedTool(toolName, element) {
-            currentForcedTool = toolName;
-            
-            // Remove active class from all
-            document.querySelectorAll('.tool-item').forEach(el => el.classList.remove('active-tool'));
-            // Add active class to clicked
-            if (element) {
-                element.classList.add('active-tool');
-            }
-            
-            // Give user feedback via robot
-            if (toolName) {
-                updateRobotMsg("Override Accepted. Forcing " + toolName, 3000);
-            } else {
-                updateRobotMsg("Auto Mode Engaged.", 3000);
-            }
-            
-            // Close menu
-            document.getElementById('tools-menu').classList.remove('show');
-        }
+        // Auto-growing textarea
+        const tx = document.getElementById('prompt');
+        tx.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight - 16) + 'px';
+        });
 
-        function toggleToolsMenu(e) {
-            e.stopPropagation();
-            document.getElementById('tools-menu').classList.toggle('show');
-        }
+        // Chaos Mode toggle
+        document.getElementById('chaos-toggle').addEventListener('change', function() {
+            isChaosMode = this.checked;
+        });
+
+        // Mascot toggle
+        const mascotWidget = document.getElementById('mascot-widget');
+        const mascotBubble = document.getElementById('mascot-bubble');
+        const mascotModel = document.getElementById('mascot-model');
         
-        document.addEventListener('click', (e) => {
-            const btn = document.getElementById('tools-btn');
-            const menu = document.getElementById('tools-menu');
-            if (menu && btn) {
-                if (menu.classList.contains('show') && !btn.contains(e.target) && !menu.contains(e.target)) {
-                    menu.classList.remove('show');
-                }
+        document.getElementById('mascot-toggle').addEventListener('change', function() {
+            if(this.checked) {
+                mascotWidget.style.display = 'flex';
+                speakMascot("Hello! Ready to assist.", 4000);
+            } else {
+                mascotWidget.style.display = 'none';
             }
         });
 
-        // --- Interactive Particle Network Background ---
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        let width, height;
-        let particles = [];
-
-        function initParticles() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            particles = [];
-            for (let i = 0; i < 80; i++) {
-                particles.push({
-                    x: Math.random() * width, y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 1.0, vy: (Math.random() - 0.5) * 1.0,
-                    size: Math.random() * 2 + 1
-                });
-            }
-        }
-
-        function drawParticles() {
-            ctx.clearRect(0, 0, width, height);
-            for (let i = 0; i < particles.length; i++) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy;
-                if (p.x < 0 || p.x > width) p.vx *= -1;
-                if (p.y < 0 || p.y > height) p.vy *= -1;
-                
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
-                ctx.fill();
-
-                for (let j = i + 1; j < particles.length; j++) {
-                    let p2 = particles[j];
-                    let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
-                    if (dist < 150) {
-                        ctx.beginPath();
-                        ctx.moveTo(p.x, p.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        ctx.strokeStyle = `rgba(16, 185, 129, ${0.2 * (1 - dist/150)})`;
-                        ctx.stroke();
-                    }
-                }
-            }
-            requestAnimationFrame(drawParticles);
-        }
-        initParticles();
-        drawParticles();
-        window.addEventListener('resize', initParticles);
-
-
-        // --- Welcome Screen Typewriter ---
-        const greeting = "ESTABLISH NEURAL LINK TO COMMENCE RESEARCH PROTOCOL";
-        let charIndex = 0;
-        
-        function typeWriter() {
-            if (charIndex < greeting.length) {
-                document.getElementById("subtitle-text").innerHTML = greeting.substring(0, charIndex + 1) + '<span class="cursor"></span>';
-                charIndex++;
-                setTimeout(typeWriter, 30);
-            } else {
-                document.getElementById("suggestions").style.opacity = "1";
-            }
-        }
-        window.onload = () => { setTimeout(typeWriter, 500); };
-        
-        // --- Roaming Robot Logic ---
-        const sideRobot = document.getElementById('side-robot');
-        let robotState = 'idle'; 
-        let robotTimeout;
-
-        function updateRobotMsg(text, duration=4000) {
-            const bubble = document.getElementById('robot-bubble');
-            bubble.innerText = text;
-            bubble.classList.add('active');
+        function speakMascot(msg, duration) {
+            mascotBubble.innerText = msg;
+            mascotBubble.classList.add('show');
             
-            clearTimeout(robotTimeout);
-            robotTimeout = setTimeout(() => {
-                bubble.classList.remove('active');
+            if (mascotModel) {
+                const anims = ["Jump", "Wave", "ThumbsUp", "Walk"];
+                const randAnim = anims[Math.floor(Math.random() * anims.length)];
+                mascotModel.setAttribute('animation-name', randAnim);
+            }
+
+            setTimeout(() => {
+                mascotBubble.classList.remove('show');
+                if(mascotModel) mascotModel.setAttribute('animation-name', 'Idle');
             }, duration);
         }
 
-        setInterval(() => {
-            if (robotState === 'idle') {
-                const x = Math.max(100, Math.random() * (window.innerWidth - 300));
-                const y = Math.max(100, Math.random() * (window.innerHeight - 200));
-                sideRobot.style.left = x + 'px';
-                sideRobot.style.top = y + 'px';
-            }
-        }, 6000); 
-
-        setTimeout(() => {
-            sideRobot.style.left = (window.innerWidth - 350) + 'px';
-            sideRobot.style.top = (window.innerHeight - 150) + 'px';
-            updateRobotMsg("Awaiting your command, Commander.", 5000);
-        }, 1500);
-
-        function moveRobotToInput() {
-            robotState = 'busy';
-            const inputBox = document.querySelector('.input-container');
-            const rect = inputBox.getBoundingClientRect();
-            sideRobot.style.left = Math.max(20, rect.right - 450) + 'px';
-            sideRobot.style.top = (rect.top - 120) + 'px';
-        }
-
-        function moveRobotToThinking() {
-            robotState = 'busy';
-            const panels = document.querySelectorAll('.reasoning-panel');
-            if(panels.length > 0) {
-                const rect = panels[panels.length-1].getBoundingClientRect();
-                sideRobot.style.left = Math.max(20, rect.left - 180) + 'px';
-                sideRobot.style.top = Math.max(20, rect.top + 50) + 'px';
-            }
-        }
-
-        document.getElementById('prompt').addEventListener('focus', () => {
-            if (robotState === 'idle') {
-                moveRobotToInput();
-                updateRobotMsg("I am ready to process data.", 3000);
-            }
-        });
-        document.getElementById('prompt').addEventListener('blur', () => {
-            if (robotState === 'busy') robotState = 'idle';
+        // Forced Tool Select
+        document.getElementById('tool-select').addEventListener('change', function() {
+            currentForcedTool = this.value;
         });
 
-        // --- Chat Logic ---
-        function setPrompt(text) {
+        // Initialize session on load
+        window.addEventListener('DOMContentLoaded', async () => {
+            const savedSession = localStorage.getItem('nexus_session_id');
+            if (savedSession) {
+                SESSION_ID = savedSession;
+                await selectSession(SESSION_ID);
+            } else {
+                await startNewSession();
+            }
+            await loadSessions();
+        });
+
+        // Load all active sessions
+        async function loadSessions() {
+            try {
+                const res = await fetch('/sessions');
+                const sessions = await res.json();
+                const container = document.getElementById('sidebar-sessions');
+                container.innerHTML = '';
+                
+                sessions.forEach(sess => {
+                    const activeClass = sess.session_id === SESSION_ID ? 'active' : '';
+                    const div = document.createElement('div');
+                    div.className = `session-item \${activeClass}`;
+                    div.onclick = () => selectSession(sess.session_id);
+                    
+                    div.innerHTML = `
+                        <div class="session-title">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            \${sess.title}
+                        </div>
+                        <button class="session-delete" onclick="event.stopPropagation(); deleteSession('\${sess.session_id}')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Error loading sessions:", e);
+            }
+        }
+
+        // Create New Session
+        document.getElementById('new-chat-btn').onclick = startNewSession;
+
+        async function startNewSession() {
+            try {
+                const res = await fetch('/sessions', { method: 'POST' });
+                const data = await res.json();
+                SESSION_ID = data.session_id;
+                localStorage.setItem('nexus_session_id', SESSION_ID);
+                
+                clearChat();
+                await loadSessions();
+            } catch (e) {
+                console.error("Error starting session:", e);
+            }
+        }
+
+        // Select a Session & Load History
+        async function selectSession(sessionId) {
+            SESSION_ID = sessionId;
+            localStorage.setItem('nexus_session_id', SESSION_ID);
+            
+            try {
+                const res = await fetch(`/sessions/\${sessionId}`);
+                const data = await res.json();
+                
+                clearChat();
+                
+                if (data.history && data.history.length > 0) {
+                    document.getElementById('welcome-panel').style.display = 'none';
+                    const wrapper = document.getElementById('chat-wrapper');
+                    
+                    data.history.forEach(entry => {
+                        // User message
+                        const userRow = document.createElement('div');
+                        userRow.className = 'message-row user';
+                        userRow.innerHTML = `<div class="bubble-content">\${entry.task}</div>`;
+                        wrapper.appendChild(userRow);
+                        
+                        // Agent message
+                        const agentRow = document.createElement('div');
+                        agentRow.className = 'message-row agent';
+                        agentRow.innerHTML = `
+                            <div class="avatar agent-avatar">N</div>
+                            <div class="bubble-content markdown-body">\${marked.parse(entry.answer)}</div>
+                        `;
+                        wrapper.appendChild(agentRow);
+                        addCodeCopyButtons(agentRow);
+                    });
+                }
+                
+                await loadSessions();
+            } catch (e) {
+                console.error("Error loading session history:", e);
+            }
+        }
+
+        // Delete a session
+        async function deleteSession(sessionId) {
+            try {
+                await fetch(`/sessions/\${sessionId}`, { method: 'DELETE' });
+                if (sessionId === SESSION_ID) {
+                    await startNewSession();
+                } else {
+                    await loadSessions();
+                }
+            } catch (e) {
+                console.error("Error deleting session:", e);
+            }
+        }
+
+        function clearChat() {
+            const wrapper = document.getElementById('chat-wrapper');
+            wrapper.innerHTML = `
+                <div class="welcome-panel" id="welcome-panel">
+                    <h1>Nexus.AI</h1>
+                    <p>Your self-healing, multi-agent assistant for coding, research, and analysis.</p>
+                    <div class="suggestion-grid">
+                        <div class="suggestion-card" onclick="triggerSuggestion('Find autonomous vehicle news')">
+                            <strong>Research vehicles</strong>
+                            <span>Search Wikipedia for autonomous driving updates</span>
+                        </div>
+                        <div class="suggestion-card" onclick="triggerSuggestion('Explain topological qubits')">
+                            <strong>Explain quantum</strong>
+                            <span>Get definitions and physics parameters</span>
+                        </div>
+                        <div class="suggestion-card" onclick="triggerSuggestion('Write a quick Python script to compress files')">
+                            <strong>Write code</strong>
+                            <span>Draft a script to handle rolling compressions</span>
+                        </div>
+                        <div class="suggestion-card" onclick="triggerSuggestion('AI healthcare startup landscape')">
+                            <strong>BioTech analysis</strong>
+                            <span>Get reports on AlphaFold and medical approvals</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function triggerSuggestion(text) {
             document.getElementById('prompt').value = text;
             sendMessage();
         }
 
-        const chat = document.getElementById('chat');
-        const promptInput = document.getElementById('prompt');
-        const welcomeMsg = document.getElementById('welcome-msg');
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
 
-        function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
-
+        // Stream and Send Logic
         async function sendMessage() {
-            const text = promptInput.value;
+            if (isGenerating) return;
+            
+            const promptArea = document.getElementById('prompt');
+            const text = promptArea.value.trim();
             if (!text) return;
-            promptInput.value = '';
             
-            if(welcomeMsg) welcomeMsg.style.display = 'none';
-
-            robotState = 'busy';
-            moveRobotToInput();
-            updateRobotMsg("Transmitting query to neural net...", 3000);
-
-            const userWrapper = document.createElement('div');
-            userWrapper.className = 'message-wrapper user';
-            userWrapper.innerHTML = `<div class="avatar">U</div><div class="bubble">${text}</div>`;
-            chat.appendChild(userWrapper);
-
-            const agentWrapper = document.createElement('div');
-            agentWrapper.className = 'message-wrapper agent';
+            promptArea.value = '';
+            promptArea.style.height = 'auto';
             
-            const agentBubble = document.createElement('div');
-            agentBubble.className = 'bubble';
+            const welcome = document.getElementById('welcome-panel');
+            if (welcome) welcome.style.display = 'none';
             
-            const reasoningPanel = document.createElement('div');
-            reasoningPanel.className = 'reasoning-panel';
-            reasoningPanel.innerHTML = `
-                <div class="reasoning-header">
-                    <span id="header-text-${Date.now()}">NEURAL REASONING ENGINE</span>
-                    <div class="spinner" id="spinner-${Date.now()}"></div>
-                </div>
-                <div class="reasoning-content" id="content-${Date.now()}"></div>
-            `;
+            isGenerating = true;
+            
+            const wrapper = document.getElementById('chat-wrapper');
+            const userRow = document.createElement('div');
+            userRow.className = 'message-row user';
+            userRow.innerHTML = `<div class="bubble-content">\${text}</div>`;
+            wrapper.appendChild(userRow);
+            
+            const agentRow = document.createElement('div');
+            agentRow.className = 'message-row agent';
+            
+            const agentAvatar = document.createElement('div');
+            agentAvatar.className = 'avatar agent-avatar';
+            agentAvatar.innerText = 'N';
+            
+            const agentContent = document.createElement('div');
+            agentContent.className = 'bubble-content';
+            
+            // Accordion thought panel
+            const thoughtAccordion = document.createElement('details');
+            thoughtAccordion.className = 'thought-accordion';
+            thoughtAccordion.setAttribute('open', '');
+            
+            const thoughtSummary = document.createElement('summary');
+            thoughtSummary.innerText = 'Thinking Process';
+            
+            const thoughtContent = document.createElement('div');
+            thoughtContent.className = 'reasoning-content';
+            
+            thoughtAccordion.appendChild(thoughtSummary);
+            thoughtAccordion.appendChild(thoughtContent);
             
             const finalAnswerBox = document.createElement('div');
             finalAnswerBox.className = 'markdown-body';
-            finalAnswerBox.style.display = 'none';
             
-            agentBubble.appendChild(reasoningPanel);
-            agentBubble.appendChild(finalAnswerBox);
+            agentContent.appendChild(thoughtAccordion);
+            agentContent.appendChild(finalAnswerBox);
             
-            agentWrapper.innerHTML = `<div class="avatar">N</div>`;
-            agentWrapper.appendChild(agentBubble);
+            agentRow.appendChild(agentAvatar);
+            agentRow.appendChild(agentContent);
             
-            chat.appendChild(agentWrapper);
+            wrapper.appendChild(agentRow);
             scrollToBottom();
-
-            const contentBox = reasoningPanel.querySelector('.reasoning-content');
-            const headerText = reasoningPanel.querySelector('.reasoning-header span');
-            const spinner = reasoningPanel.querySelector('.spinner');
-
-            setTimeout(moveRobotToThinking, 800);
+            
+            if(document.getElementById('mascot-toggle').checked) {
+                speakMascot("Thinking and referencing databases...", 4000);
+            }
 
             try {
                 let url = '/stream?task=' + encodeURIComponent(text) + '&session_id=' + SESSION_ID;
@@ -567,74 +1100,73 @@ html_content = """
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
                 let logText = "";
+                let isThoughtOpen = true;
                 
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
                     
-                    const chunks = decoder.decode(value).split('\\n\\n');
+                    const chunks = decoder.decode(value).split('\n\n');
                     for (const chunk of chunks) {
                         if (chunk.startsWith('data: ')) {
                             const data = JSON.parse(chunk.substring(6));
                             if (data.type === 'log') {
-                                logText += data.text + "\\n";
-                                contentBox.innerText = logText;
-                                
-                                if (data.text.includes('Executing Tool')) {
-                                    headerText.innerText = "ACCESSING EXTERNAL MAINFRAME";
-                                    updateRobotMsg("Running external tool search...", 4000);
-                                    moveRobotToThinking();
-                                } else if (data.text.includes('[Agent-Critic]')) {
-                                    headerText.innerText = "HYPOTHESIS VERIFICATION";
-                                    updateRobotMsg("Cross-referencing data points...", 4000);
-                                    moveRobotToThinking();
-                                } else if (data.text.includes('Thought')) {
-                                    headerText.innerText = "SYNTHESIZING DATA";
-                                    updateRobotMsg("Analyzing data streams...", 4000);
-                                    moveRobotToThinking();
-                                }
+                                logText += data.text + "\n";
+                                thoughtContent.innerText = logText;
+                                thoughtContent.scrollTop = thoughtContent.scrollHeight;
                                 scrollToBottom();
-                                
                             } else if (data.type === 'memory') {
                                 const memCore = document.getElementById('memory-core');
                                 const memText = document.getElementById('memory-text');
                                 memCore.classList.add('active');
-                                memText.innerText = "MEMORY ACTIVE: " + data.text.toUpperCase();
-                                
-                                setTimeout(() => {
-                                    memCore.classList.remove('active');
-                                }, 6000);
+                                memText.innerText = "ACTIVE: " + data.text.toUpperCase();
+                                setTimeout(() => { memCore.classList.remove('active'); }, 5000);
                             } else if (data.type === 'answer') {
-                                spinner.style.display = 'none';
-                                headerText.innerText = "SYNTHESIS COMPLETE";
-                                
-                                finalAnswerBox.style.display = 'block';
+                                if (isThoughtOpen) {
+                                    thoughtAccordion.removeAttribute('open');
+                                    isThoughtOpen = false;
+                                }
                                 finalAnswerBox.innerHTML = marked.parse(data.text);
+                                addCodeCopyButtons(finalAnswerBox);
                                 scrollToBottom();
-                                updateRobotMsg("Task successfully completed!", 6000);
-                                setTimeout(() => { robotState = 'idle'; }, 6000);
                             }
                         }
                     }
                 }
+                
+                if(document.getElementById('mascot-toggle').checked) {
+                    speakMascot("Completed! Strategic report generated.", 3000);
+                }
             } catch (e) {
-                contentBox.innerText += "\\nERROR: " + e;
-                headerText.innerText = "CRITICAL SYSTEM FAILURE";
-                spinner.style.display = 'none';
-                updateRobotMsg("Critical Error in Neural Link!", 6000);
-                robotState = 'idle';
+                thoughtContent.innerText += "\n[CRITICAL FAILURE] Interface connection interrupted: " + e;
+            } finally {
+                isGenerating = false;
+                await loadSessions();
             }
         }
-        
+
         function scrollToBottom() {
-            setTimeout(() => {
-                chat.scrollTop = chat.scrollHeight;
-                const contentBoxes = document.querySelectorAll('.reasoning-content');
-                if (contentBoxes.length > 0) {
-                    const lastBox = contentBoxes[contentBoxes.length - 1];
-                    lastBox.scrollTop = lastBox.scrollHeight;
-                }
-            }, 10);
+            const chatArea = document.getElementById('chat-area');
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function addCodeCopyButtons(container) {
+            const blocks = container.querySelectorAll('pre');
+            blocks.forEach(block => {
+                if (block.querySelector('.copy-btn')) return;
+                
+                const btn = document.createElement('button');
+                btn.className = 'copy-btn';
+                btn.innerText = 'Copy';
+                btn.onclick = () => {
+                    const code = block.querySelector('code').innerText;
+                    navigator.clipboard.writeText(code).then(() => {
+                        btn.innerText = 'Copied!';
+                        setTimeout(() => { btn.innerText = 'Copy'; }, 2000);
+                    });
+                };
+                block.appendChild(btn);
+            });
         }
     </script>
 </body>
@@ -661,6 +1193,82 @@ async def stream_agent(task: str, session_id: str, force_tool: str = None, chaos
             await asyncio.sleep(0.01)
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+import os
+import uuid
+from fastapi import Path
+
+@app.get("/sessions")
+async def get_sessions():
+    """Retrieves all active session IDs and their parsed titles for the sidebar list"""
+    filepath = "agent_memory.json"
+    if not os.path.exists(filepath):
+        return []
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            db = json.load(f)
+            sessions = []
+            for session_id, data in db.items():
+                title = "New Session"
+                if data.get("history"):
+                    first_task = data["history"][0]["task"]
+                    title = first_task[:25] + "..." if len(first_task) > 25 else first_task
+                elif data.get("summary"):
+                    title = data["summary"][:25] + "..."
+                sessions.append({"session_id": session_id, "title": title})
+            return sessions
+    except Exception:
+        return []
+
+@app.post("/sessions")
+async def create_session():
+    """Creates a new unique session and returns the ID"""
+    session_id = f"sess_{uuid.uuid4().hex[:8]}"
+    filepath = "agent_memory.json"
+    db = {}
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                db = json.load(f)
+        except Exception:
+            pass
+    db[session_id] = {"history": [], "summary": ""}
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(db, f, indent=4)
+    except Exception:
+        pass
+    return {"session_id": session_id}
+
+@app.delete("/sessions/{session_id}")
+async def delete_session(session_id: str = Path(..., description="The session ID to delete")):
+    """Deletes a specific session from memory database"""
+    filepath = "agent_memory.json"
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                db = json.load(f)
+            if session_id in db:
+                del db[session_id]
+                with open(filepath, "w", encoding="utf-8") as f:
+                    json.dump(db, f, indent=4)
+                return {"status": "deleted"}
+        except Exception:
+            pass
+    return {"status": "not_found"}
+
+@app.get("/sessions/{session_id}")
+async def get_session_history(session_id: str = Path(..., description="The session ID to fetch")):
+    """Retrieves the complete history of a specific session"""
+    filepath = "agent_memory.json"
+    if not os.path.exists(filepath):
+        return {"history": [], "summary": ""}
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            db = json.load(f)
+        return db.get(session_id, {"history": [], "summary": ""})
+    except Exception:
+        return {"history": [], "summary": ""}
 
 if __name__ == "__main__":
     import os
