@@ -378,8 +378,8 @@ class MultiAgentTeam:
         return True
 
     def generate_content(self, messages: list) -> str:
-        if self.model_name.startswith("groq/"):
-            groq_messages = []
+        if self.model_name.startswith("groq/") or self.model_name.startswith("huggingface/"):
+            oai_messages = []
             for msg in messages:
                 role = msg["role"]
                 if role == "model": role = "assistant"
@@ -387,23 +387,34 @@ class MultiAgentTeam:
                     content = "\n".join([p["text"] for p in msg["parts"]])
                 else:
                     content = msg.get("content", "")
-                groq_messages.append({"role": role, "content": content})
-            
-            groq_key = os.environ.get("GROQ_API_KEY", "")
-            if not groq_key:
-                raise ValueError("GROQ_API_KEY is missing from environment. Add it to Render environment variables.")
+                oai_messages.append({"role": role, "content": content})
             
             import requests
+            
+            if self.model_name.startswith("groq/"):
+                api_key = os.environ.get("GROQ_API_KEY", "")
+                if not api_key:
+                    raise ValueError("GROQ_API_KEY is missing from environment. Add it to Render environment variables.")
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                model_id = self.model_name.split("groq/")[1]
+            elif self.model_name.startswith("huggingface/"):
+                api_key = os.environ.get("HUGGINGFACE_API_KEY", "")
+                if not api_key:
+                    raise ValueError("HUGGINGFACE_API_KEY is missing from environment. Add it to Render environment variables.")
+                model_id = self.model_name.split("huggingface/")[1]
+                url = f"https://api-inference.huggingface.co/models/{model_id}/v1/chat/completions"
+            
             headers = {
-                "Authorization": f"Bearer {groq_key}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
             data = {
-                "model": self.model_name.split("groq/")[1],
-                "messages": groq_messages,
-                "temperature": 0.1
+                "model": model_id,
+                "messages": oai_messages,
+                "temperature": 0.1,
+                "max_tokens": 1500
             }
-            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data)
+            res = requests.post(url, headers=headers, json=data)
             res.raise_for_status()
             return res.json()["choices"][0]["message"]["content"]
         else:
