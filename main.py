@@ -757,7 +757,7 @@ html_content = """\n<!DOCTYPE html>
                 <div class="model-pulse-dot"></div>
                 <select id="model-select" style="background:transparent; border:none; color:white; font-size:12px; font-weight:500; outline:none; cursor:pointer; font-family:inherit;">
                     <option value="gemini-3.6-flash" style="background:#222; color:white;">Gemini 3.6 Flash</option>
-                    <option value="groq/llama-3.3-70b-versatile" style="background:#222; color:white;">Llama 3.3 70B (Groq)</option>
+                    <option value="groq/llama-3.1-70b-versatile" style="background:#222; color:white;">Llama 3.1 70B (Groq)</option>
                     <option value="groq/llama-3.1-8b-instant" style="background:#222; color:white;">Llama 3.1 8B (Groq)</option>
                     <option value="huggingface/mistralai/Mixtral-8x7B-Instruct-v0.1" style="background:#222; color:white;">Mixtral 8x7B (HF Free)</option>
                     <option value="huggingface/meta-llama/Meta-Llama-3-8B-Instruct" style="background:#222; color:white;">Llama 3 8B (HF Free)</option>
