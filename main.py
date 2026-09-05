@@ -1187,6 +1187,16 @@ html_content = """\n<!DOCTYPE html>
 </body>
 </html>\n"""
 
+@app.get("/groq_models")
+async def groq_models():
+    import os
+    import requests
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        return {"error": "No GROQ_API_KEY"}
+    res = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {key.strip()}"})
+    return res.json()
+
 @app.get("/")
 async def get_frontend():
     """Serves the HTML frontend"""
