@@ -15,600 +15,590 @@ html_content = """\n<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus.AI</title>
+    <title>NEXUS.AI | Command Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
         :root {
-            --bg-dark: #171717;
-            --bg-sidebar: #0d0d0d;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-main: #e3e3e3;
-            --text-muted: #b4b4b4;
-            --accent: #10b981;
-            --accent-glow: #34d399;
-            --bubble-user: #2f2f2f;
-            --bubble-agent: transparent;
+            --bg-base: #080a0c;
+            --bg-panel: #0d1117;
+            --bg-elevated: #111418;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-highlight: rgba(0, 229, 160, 0.3);
+            
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            
+            --accent-primary: #00E5A0; /* Neon Emerald */
+            --accent-secondary: #00C8FF; /* Electric Cyan */
+            --accent-tertiary: #8B5CF6; /* Purple */
+            --error: #f85149;
+            
             --font-main: 'Plus Jakarta Sans', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
+            
+            --glow-primary: 0 0 20px rgba(0, 229, 160, 0.15);
+            --glow-active: 0 0 30px rgba(0, 229, 160, 0.3);
         }
+
+        * { box-sizing: border-box; }
 
         body {
             font-family: var(--font-main);
-            background-color: var(--bg-dark);
+            background-color: var(--bg-base);
             color: var(--text-main);
             margin: 0;
             padding: 0;
             display: flex;
             height: 100vh;
             overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 229, 160, 0.03) 0%, transparent 50%),
+                linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
         }
 
-        /* Sidebar Styling */
-        .sidebar {
-            width: 260px;
-            background-color: var(--bg-sidebar);
-            border-right: 1px solid var(--border-color);
+        /* --- Scrollbars --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        /* --- Layout --- */
+        .sidebar-left {
+            width: 280px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            flex-shrink: 0;
-            z-index: 100;
+            z-index: 10;
         }
 
-        .sidebar-header {
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .sidebar-header h2 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: var(--accent-glow);
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .sidebar-btn {
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
-            color: white;
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.2s;
-        }
-
-        .sidebar-btn:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.25);
-        }
-
-        .sidebar-sessions {
+        .main-workspace {
             flex: 1;
-            overflow-y: auto;
-            padding: 0 12px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            position: relative;
         }
 
-        .sidebar-sessions::-webkit-scrollbar {
-            width: 4px;
+        .sidebar-right {
+            width: 320px;
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
         }
 
-        .sidebar-sessions::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+        @media (max-width: 1100px) {
+            .sidebar-right { display: none; }
+        }
+        @media (max-width: 768px) {
+            .sidebar-left { display: none; }
+        }
+
+        /* --- Left Sidebar --- */
+        .brand {
+            padding: 24px;
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--text-main), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .new-mission-btn {
+            margin: 0 24px 24px;
+            background: rgba(0, 229, 160, 0.1);
+            border: 1px solid var(--border-highlight);
+            color: var(--accent-primary);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: var(--font-main);
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--glow-primary);
+        }
+        .new-mission-btn:hover {
+            background: rgba(0, 229, 160, 0.2);
+            box-shadow: var(--glow-active);
+            transform: translateY(-1px);
+        }
+
+        .nav-section {
+            padding: 0 24px;
+            margin-bottom: 24px;
+        }
+        .nav-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            font-weight: 600;
         }
 
         .session-item {
+            padding: 10px 12px;
+            margin: 4px 24px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 13.5px;
-            cursor: pointer;
-            color: #d1d1d1;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            border: 1px solid transparent;
         }
-
         .session-item:hover {
-            background-color: rgba(255, 255, 255, 0.05);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-main);
         }
-
         .session-item.active {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: white;
+            background: rgba(255,255,255,0.05);
+            color: var(--accent-secondary);
+            border-color: rgba(0, 200, 255, 0.2);
             font-weight: 500;
         }
-
-        .session-title {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 170px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
         .session-delete {
             background: transparent;
             border: none;
             color: var(--text-muted);
             cursor: pointer;
-            padding: 2px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             opacity: 0;
-            transition: opacity 0.2s, color 0.2s;
         }
+        .session-item:hover .session-delete { opacity: 1; }
+        .session-delete:hover { color: var(--error); }
 
-        .session-item:hover .session-delete {
-            opacity: 0.6;
-        }
-
-        .session-delete:hover {
-            opacity: 1 !important;
-            color: #f87171;
-            background-color: rgba(248, 113, 113, 0.1);
-        }
-
+        /* Settings footer */
         .sidebar-footer {
-            padding: 16px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            margin-top: auto;
+            padding: 24px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
         }
-
-        .settings-item {
+        .settings-row {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            font-size: 13px;
+            align-items: center;
+            margin-bottom: 16px;
             color: var(--text-muted);
         }
-
-        .settings-select {
-            background: #2a2a2a;
-            border: 1px solid var(--border-color);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .switch {
+        
+        /* Toggles */
+        .toggle-switch {
             position: relative;
-            display: inline-block;
-            width: 34px;
-            height: 20px;
+            width: 32px;
+            height: 18px;
         }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
             position: absolute;
             cursor: pointer;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #3e3e3e;
-            transition: .4s;
+            background-color: rgba(255,255,255,0.1);
             border-radius: 34px;
+            transition: .3s;
         }
-
-        .slider:before {
+        .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 14px;
-            width: 14px;
+            height: 12px;
+            width: 12px;
             left: 3px;
             bottom: 3px;
-            background-color: white;
-            transition: .4s;
+            background-color: var(--text-muted);
             border-radius: 50%;
+            transition: .3s;
         }
-
-        input:checked + .slider {
-            background-color: var(--accent);
+        input:checked + .toggle-slider {
+            background-color: rgba(0, 229, 160, 0.2);
+            border: 1px solid var(--accent-primary);
         }
-
-        input:checked + .slider:before {
+        input:checked + .toggle-slider:before {
             transform: translateX(14px);
+            background-color: var(--accent-primary);
         }
 
-        /* Main Content Panel */
-        .main-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            position: relative;
+        .select-dark {
+            background: var(--bg-elevated);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            outline: none;
         }
 
-        /* Top Header Navigation */
+        /* --- Top Nav --- */
         .top-nav {
-            height: 56px;
-            border-bottom: 1px solid var(--border-color);
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 24px;
-            flex-shrink: 0;
-            background-color: var(--bg-dark);
+            padding: 0 32px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(8, 10, 12, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 20;
         }
-
-        .model-pill {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color);
-            padding: 6px 12px;
-            border-radius: 16px;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .model-pulse-dot {
-            width: 6px;
-            height: 6px;
-            background-color: var(--accent);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--accent);
-        }
-
-        /* Memory Alert Notification */
-        .memory-core {
+        
+        .status-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            padding: 6px 12px;
-            border-radius: 16px;
             font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
             font-weight: 600;
-            color: var(--accent-glow);
-            opacity: 0;
-            transform: translateY(-5px);
-            transition: all 0.3s;
+            color: var(--accent-primary);
         }
-
-        .memory-core.active {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .memory-pulse {
+        .status-dot {
             width: 6px;
             height: 6px;
-            background-color: var(--accent-glow);
             border-radius: 50%;
-            animation: pulse 1s infinite alternate;
+            background: var(--accent-primary);
+            box-shadow: 0 0 10px var(--accent-primary);
+            animation: pulse 2s infinite;
         }
-
         @keyframes pulse {
-            from { opacity: 0.4; }
-            to { opacity: 1; }
+            0% { opacity: 0.5; box-shadow: 0 0 5px var(--accent-primary); }
+            50% { opacity: 1; box-shadow: 0 0 15px var(--accent-primary); }
+            100% { opacity: 0.5; box-shadow: 0 0 5px var(--accent-primary); }
         }
 
-        /* Chat Area */
+        /* --- Workspace / Chat --- */
         .chat-area {
             flex: 1;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 24px;
+            padding-top: 40px;
+            scroll-behavior: smooth;
         }
-
-        .chat-area::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .chat-area::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-
+        
         .chat-wrapper {
             width: 100%;
-            max-width: 800px;
-            padding: 0 24px;
-            box-sizing: border-box;
+            max-width: 850px;
+            padding: 0 32px;
             display: flex;
             flex-direction: column;
-            gap: 28px;
+            gap: 32px;
         }
 
-        /* Message Bubbles */
-        .message-row {
-            display: flex;
-            gap: 16px;
-            width: 100%;
-            animation: fadeIn 0.4s ease forwards;
+        /* Welcome Centerpiece */
+        .welcome-panel {
+            text-align: center;
+            margin-top: 40px;
+            animation: fadeUp 0.8s ease-out forwards;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        .message-row.user {
-            justify-content: flex-end;
+        
+        .welcome-panel h1 {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-bottom: 12px;
+        }
+        .welcome-panel h1 span {
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .welcome-panel p {
+            color: var(--text-muted);
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            margin-bottom: 48px;
         }
 
-        .avatar {
-            width: 32px;
-            height: 32px;
+        /* Nexus Core Visualization */
+        .nexus-core-vis {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto 48px;
+        }
+        .core-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,229,160,0.2) 0%, transparent 70%);
+            border: 1px solid var(--accent-primary);
+            box-shadow: var(--glow-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            animation: float 4s ease-in-out infinite;
+        }
+        .core-center::after {
+            content: '';
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            box-shadow: 0 0 30px var(--accent-primary);
+        }
+        @keyframes float {
+            0% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-10px); }
+            100% { transform: translate(-50%, -50%) translateY(0px); }
+        }
+        
+        .node {
+            position: absolute;
+            width: 40px; height: 40px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 700;
-            flex-shrink: 0;
+            color: var(--text-muted);
+            z-index: 4;
+            transition: all 0.3s;
+        }
+        .node.scout { top: 10%; left: 50%; transform: translateX(-50%); }
+        .node.forge { top: 50%; right: 10%; transform: translateY(-50%); }
+        .node.oracle { bottom: 10%; left: 50%; transform: translateX(-50%); }
+        .node.sentinel { top: 50%; left: 10%; transform: translateY(-50%); }
+        
+        .connection-line {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 120px; height: 1px;
+            background: linear-gradient(90deg, var(--accent-primary) 0%, transparent 100%);
+            transform-origin: 0 0;
+            opacity: 0.3;
+            z-index: 3;
+        }
+        .line-1 { transform: rotate(-90deg); }
+        .line-2 { transform: rotate(0deg); }
+        .line-3 { transform: rotate(90deg); }
+        .line-4 { transform: rotate(180deg); }
+
+        /* Mission Cards */
+        .mission-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .mission-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+        .mission-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--border-highlight);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .mission-card h3 {
+            margin: 0 0 8px;
+            font-size: 14px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mission-card p {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
         }
 
-        .avatar.user-avatar {
-            background: #4f46e5;
-            color: white;
-            order: 2;
+        /* --- Chat Messages --- */
+        .message-row {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            animation: fadeUp 0.4s ease-out forwards;
         }
-
-        .avatar.agent-avatar {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid var(--accent);
-            color: var(--accent-glow);
+        .message-row.user {
+            justify-content: flex-end;
         }
-
+        
         .bubble-content {
             max-width: 85%;
             font-size: 15px;
-            line-height: 1.6;
+            line-height: 1.7;
         }
-
         .user .bubble-content {
-            background-color: var(--bubble-user);
-            padding: 10px 16px;
-            border-radius: 18px 18px 2px 18px;
-            color: white;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            padding: 16px 24px;
+            border-radius: 20px 20px 4px 20px;
+            color: var(--text-main);
+            backdrop-filter: blur(10px);
         }
-
         .agent .bubble-content {
             flex: 1;
-            color: var(--text-main);
+            color: rgba(255,255,255,0.9);
         }
 
-        /* Collapsible Reasoning Process Accordion */
-        .thought-accordion {
-            border-left: 2px solid rgba(16, 185, 129, 0.3);
-            background: rgba(16, 185, 129, 0.03);
-            margin: 12px 0;
-            border-radius: 0 6px 6px 0;
-            overflow: hidden;
-        }
-
-        .thought-accordion summary {
-            padding: 10px 14px;
-            font-size: 12.5px;
-            font-weight: 600;
-            color: var(--accent-glow);
-            cursor: pointer;
-            outline: none;
-            user-select: none;
+        .agent-avatar {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            background: rgba(0, 229, 160, 0.1);
+            border: 1px solid var(--border-highlight);
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--accent-primary);
+            box-shadow: var(--glow-primary);
+        }
+
+        /* Console / Reasoning Accordion */
+        .thought-accordion {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent-secondary);
+            border-radius: 6px;
+            margin: 16px 0;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .thought-accordion summary {
+            padding: 12px 16px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--accent-secondary);
+            cursor: pointer;
+            outline: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
+            background: rgba(0,0,0,0.2);
         }
-
-        .thought-accordion summary::-webkit-details-marker {
-            display: none;
-        }
-
+        .thought-accordion summary::-webkit-details-marker { display: none; }
         .thought-accordion summary::before {
-            content: '▶';
-            font-size: 9px;
-            display: inline-block;
+            content: '>';
             transition: transform 0.2s;
         }
-
-        .thought-accordion[open] summary::before {
-            transform: rotate(90deg);
-        }
-
+        .thought-accordion[open] summary::before { transform: rotate(90deg); }
+        
         .reasoning-content {
-            padding: 0 14px 14px 14px;
+            padding: 0 16px 16px 28px;
             font-family: var(--font-mono);
-            font-size: 13px;
-            color: #a7f3d0;
+            font-size: 12px;
+            color: var(--text-muted);
             white-space: pre-wrap;
-            line-height: 1.5;
-            max-height: 250px;
+            line-height: 1.6;
+            max-height: 400px;
             overflow-y: auto;
         }
 
-        /* Welcome Hologram Panel */
-        .welcome-panel {
-            margin: auto;
-            text-align: center;
-            max-width: 600px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-            padding-bottom: 8vh;
-        }
-
-        .welcome-panel h1 {
-            font-size: 32px;
-            font-weight: 800;
-            margin: 0;
-            background: linear-gradient(135deg, #fff 0%, #a7f3d0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }
-
-        .welcome-panel p {
-            font-size: 15px;
-            color: var(--text-muted);
-            margin: 0;
-        }
-
-        /* Suggestion Prompt Cards Grid */
-        .suggestion-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 24px;
-            width: 100%;
-        }
-
-        .suggestion-card {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 16px;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .suggestion-card:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-color: rgba(16, 185, 129, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .suggestion-card strong {
-            display: block;
-            font-size: 13.5px;
-            font-weight: 600;
+        /* Markdown blocks styling */
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
             color: white;
-            margin-bottom: 4px;
+            margin-top: 24px; margin-bottom: 12px;
         }
-
-        .suggestion-card span {
-            font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.4;
-            display: block;
-        }
-
-        /* Code Block Styling */
+        .markdown-body p { margin-bottom: 16px; }
+        .markdown-body ul, .markdown-body ol { padding-left: 20px; margin-bottom: 16px; }
+        .markdown-body li { margin-bottom: 8px; }
+        
+        /* Code Blocks */
         pre {
-            background: #0f0f0f;
+            background: #0d1117 !important;
+            border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 16px;
+            padding: 20px;
             overflow-x: auto;
             position: relative;
-            margin: 16px 0;
-            border: 1px solid var(--border-color);
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-
         code {
             font-family: var(--font-mono);
-            font-size: 14px;
-            color: #67e8f9;
+            font-size: 13.5px;
+            color: #e3e3e3;
         }
-
-        /* Copy Button for Code Blocks */
         .copy-btn {
             position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color);
+            top: 12px; right: 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
             color: var(--text-muted);
-            padding: 4px 8px;
+            padding: 6px 12px;
             border-radius: 4px;
             font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
         }
+        .copy-btn:hover { background: rgba(255,255,255,0.1); color: white; }
 
-        .copy-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        /* Markdown Styling inside Agent bubbles */
-        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
-            color: white;
-            margin-top: 24px;
-            margin-bottom: 12px;
-        }
-
-        .markdown-body p {
-            margin-bottom: 16px;
-        }
-
-        .markdown-body ul, .markdown-body ol {
-            padding-left: 20px;
-            margin-bottom: 16px;
-        }
-
-        .markdown-body li {
-            margin-bottom: 8px;
-        }
-
-        /* Input Panel */
+        /* --- Chat Input Dock --- */
         .input-panel {
-            width: 100%;
+            padding: 24px 32px 32px;
+            background: linear-gradient(to top, var(--bg-base) 70%, transparent);
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 16px 24px 24px 24px;
-            box-sizing: border-box;
-            background: linear-gradient(180deg, rgba(23, 23, 23, 0) 0%, rgba(23, 23, 23, 1) 40%);
-            flex-shrink: 0;
-            z-index: 10;
+            justify-content: center;
+            z-index: 20;
         }
-
         .input-dock {
             width: 100%;
-            max-width: 800px;
-            background-color: #262626;
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 6px 12px;
+            max-width: 850px;
+            background: rgba(17, 20, 24, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            transition: border-color 0.3s;
+        }
+        .input-dock:focus-within {
+            border-color: var(--border-highlight);
+            box-shadow: 0 20px 40px rgba(0, 229, 160, 0.1);
+        }
+        
+        .input-top-bar {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            margin-bottom: 8px;
+        }
+        
+        .input-row {
             display: flex;
             align-items: flex-end;
             gap: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .input-dock:focus-within {
-            border-color: rgba(16, 185, 129, 0.4);
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.05);
         }
 
         .input-dock textarea {
@@ -620,181 +610,272 @@ html_content = """\n<!DOCTYPE html>
             font-family: var(--font-main);
             font-size: 15px;
             resize: none;
-            max-height: 200px;
-            min-height: 24px;
-            padding: 8px 0;
+            min-height: 44px;
+            max-height: 250px;
+            padding: 10px 8px;
             line-height: 1.5;
         }
-
-        .input-dock textarea::placeholder {
-            color: rgba(255, 255, 255, 0.3);
-        }
+        .input-dock textarea::placeholder { color: rgba(255,255,255,0.2); }
 
         .send-btn {
-            background-color: var(--accent);
+            background: var(--accent-primary);
             color: black;
             border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
+            width: 40px; height: 40px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
-            margin-bottom: 4px;
-            flex-shrink: 0;
+            transition: all 0.2s;
+            margin-bottom: 2px;
         }
-
         .send-btn:hover {
-            background-color: var(--accent-glow);
-            transform: scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: var(--glow-primary);
+            background: #00f0a8;
+        }
+        .send-btn svg { width: 18px; height: 18px; stroke: black; stroke-width: 2.5; fill: none; }
+
+        /* --- Right Mission Control --- */
+        .mc-header {
+            padding: 24px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+        .mc-section {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .mc-title {
+            font-size: 12px;
+            color: white;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        
+        .agent-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .agent-card.active {
+            border-color: var(--border-highlight);
+            background: rgba(0, 229, 160, 0.05);
+        }
+        .agent-icon {
+            width: 32px; height: 32px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .agent-info { flex: 1; }
+        .agent-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+        .agent-role {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .agent-status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #3e3e3e;
+        }
+        .agent-card.active .agent-status-dot {
+            background: var(--accent-primary);
+            box-shadow: 0 0 8px var(--accent-primary);
+        }
+        
+        .system-health {
+            margin-top: 16px;
+        }
+        .health-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        .health-status {
+            color: var(--accent-primary);
         }
 
-        .send-btn svg {
-            width: 16px;
-            height: 16px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2.5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+        /* --- Memory Alert --- */
+        .memory-core {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #d8b4fe;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s;
+        }
+        .memory-core.active {
+            opacity: 1; transform: translateY(0);
+        }
+        .memory-pulse {
+            width: 6px; height: 6px;
+            background: #a78bfa;
+            border-radius: 50%;
+            animation: pulse 1s infinite alternate;
         }
 
-        /* --- Collapsible CSS 3D Robot Mascot (Bottom-Right) --- */
+        /* 3D Mascot */
         #mascot-widget {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            display: flex;
+            bottom: 24px; left: 24px;
+            display: none;
             flex-direction: column;
-            align-items: flex-end;
-            gap: 12px;
+            align-items: flex-start;
             z-index: 1000;
-            pointer-events: none;
-            display: none; /* Hidden by default */
         }
-
         #mascot-model {
-            width: 80px;
-            height: 80px;
+            width: 100px; height: 100px;
             animation: float 3s ease-in-out infinite alternate;
-            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
-            pointer-events: auto;
-            cursor: pointer;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.8));
         }
-
-        @keyframes float {
-            from { transform: translateY(0); }
-            to { transform: translateY(-8px); }
-        }
-
         .mascot-bubble {
-            background: #262626;
-            border: 1px solid var(--border-color);
-            border-radius: 12px 12px 0 12px;
-            padding: 8px 12px;
-            font-size: 11.5px;
-            color: var(--text-main);
-            max-width: 200px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--accent-secondary);
+            border-radius: 12px 12px 12px 0;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: white;
+            box-shadow: 0 0 20px rgba(0, 200, 255, 0.2);
+            margin-bottom: 12px;
             opacity: 0;
             transition: opacity 0.3s;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
+        .mascot-bubble.show { opacity: 1; }
 
-        .mascot-bubble.show {
-            opacity: 1;
-        }
     </style>
 </head>
 <body>
 
-    <!-- Left Sidebar Panel -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2>Nexus.AI</h2>
-            <button id="new-chat-btn" class="sidebar-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                New chat
-            </button>
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar-left">
+        <div class="brand">NEXUS.AI</div>
+        
+        <button id="new-chat-btn" class="new-mission-btn">
+            + New Mission
+        </button>
+        
+        <div class="nav-section">
+            <div class="nav-title">Mission Logs</div>
         </div>
-        <div class="sidebar-sessions" id="sidebar-sessions">
-            <!-- Active sessions list -->
+        
+        <div class="sidebar-sessions" id="sidebar-sessions" style="flex: 1; overflow-y: auto;">
+            <!-- Active sessions list injected via JS -->
         </div>
+        
         <div class="sidebar-footer">
-            <div class="settings-item">
-                <label>Chaos Mode</label>
-                <label class="switch">
+            <div class="settings-row">
+                <span>Chaos Mode</span>
+                <label class="toggle-switch">
                     <input type="checkbox" id="chaos-toggle">
-                    <span class="slider"></span>
+                    <span class="toggle-slider"></span>
                 </label>
             </div>
-            <div class="settings-item">
-                <label>Show Mascot</label>
-                <label class="switch">
+            <div class="settings-row">
+                <span>Show Mascot</span>
+                <label class="toggle-switch">
                     <input type="checkbox" id="mascot-toggle">
-                    <span class="slider"></span>
+                    <span class="toggle-slider"></span>
                 </label>
             </div>
-            <div class="settings-item">
-                <label>Forced Tool</label>
-                <select id="tool-select" class="settings-select">
-                    <option value="">None (Auto)</option>
+            <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <span>Forced Tool Override</span>
+                <select id="tool-select" class="select-dark" style="width: 100%;">
+                    <option value="">None (Autonomous)</option>
                     <option value="wiki_search">Wikipedia</option>
                     <option value="arxiv_search">ArXiv</option>
                     <option value="github_search">GitHub</option>
                 </select>
             </div>
+            <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px;">
+                <span>Neural Engine</span>
+                <select id="model-select" class="select-dark" style="width: 100%;">
+                    <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                    <option value="groq/openai/gpt-oss-120b">GPT-OSS 120B (Groq)</option>
+                    <option value="groq/groq/compound">Groq Compound (Groq)</option>
+                    <option value="huggingface/mistralai/Mixtral-8x7B-Instruct-v0.1">Mixtral 8x7B (HF)</option>
+                    <option value="huggingface/meta-llama/Meta-Llama-3-8B-Instruct">Llama 3 8B (HF)</option>
+                </select>
+            </div>
         </div>
     </div>
 
-    <!-- Main Chat Workspace -->
-    <div class="main-panel">
-        
-        <!-- Navigation Top Bar -->
+    <!-- MAIN WORKSPACE -->
+    <div class="main-workspace">
         <div class="top-nav">
-            <div class="model-pill">
-                <div class="model-pulse-dot"></div>
-                <select id="model-select" style="background:transparent; border:none; color:white; font-size:12px; font-weight:500; outline:none; cursor:pointer; font-family:inherit;">
-                    <option value="gemini-3.6-flash" style="background:#222; color:white;">Gemini 3.6 Flash</option>
-                    <option value="groq/openai/gpt-oss-120b" style="background:#222; color:white;">GPT-OSS 120B (Groq)</option>
-                    <option value="groq/groq/compound" style="background:#222; color:white;">Groq Compound (Groq)</option>
-                    <option value="huggingface/mistralai/Mixtral-8x7B-Instruct-v0.1" style="background:#222; color:white;">Mixtral 8x7B (HF Free)</option>
-                    <option value="huggingface/meta-llama/Meta-Llama-3-8B-Instruct" style="background:#222; color:white;">Llama 3 8B (HF Free)</option>
-                </select>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                SYSTEM ONLINE
             </div>
-            
             <div class="memory-core" id="memory-core">
                 <div class="memory-pulse"></div>
                 <span id="memory-text">MEMORY RETRIEVED</span>
             </div>
         </div>
         
-        <!-- Message list space -->
         <div class="chat-area" id="chat-area">
             <div class="chat-wrapper" id="chat-wrapper">
                 
-                <!-- Welcome View -->
                 <div class="welcome-panel" id="welcome-panel">
-                    <h1>Nexus.AI</h1>
-                    <p>Your self-healing, multi-agent assistant for coding, research, and analysis.</p>
+                    <div class="nexus-core-vis">
+                        <div class="connection-line line-1"></div>
+                        <div class="connection-line line-2"></div>
+                        <div class="connection-line line-3"></div>
+                        <div class="connection-line line-4"></div>
+                        <div class="node scout">S</div>
+                        <div class="node forge">F</div>
+                        <div class="node oracle">O</div>
+                        <div class="node sentinel">V</div>
+                        <div class="core-center"></div>
+                    </div>
                     
-                    <div class="suggestion-grid">
-                        <div class="suggestion-card" onclick="triggerSuggestion('Find autonomous vehicle news')">
-                            <strong>Research vehicles</strong>
-                            <span>Search Wikipedia for autonomous driving updates</span>
+                    <h1><span>NEXUS</span>.AI</h1>
+                    <p>Your Autonomous AI Workspace</p>
+                    
+                    <div class="mission-grid">
+                        <div class="mission-card" onclick="triggerSuggestion('Investigate autonomous driving breakthroughs')">
+                            <h3>🔍 Research Mission</h3>
+                            <p>Investigate autonomous vehicle news</p>
                         </div>
-                        <div class="suggestion-card" onclick="triggerSuggestion('Explain topological qubits')">
-                            <strong>Explain quantum</strong>
-                            <span>Get definitions and physics parameters</span>
+                        <div class="mission-card" onclick="triggerSuggestion('Build a FastAPI AI application')">
+                            <h3>⚒ Build Mission</h3>
+                            <p>Write an API service architecture</p>
                         </div>
-                        <div class="suggestion-card" onclick="triggerSuggestion('Write a quick Python script to compress files')">
-                            <strong>Write code</strong>
-                            <span>Draft a script to handle rolling compressions</span>
+                        <div class="mission-card" onclick="triggerSuggestion('Explain topological qubits and quantum entanglement')">
+                            <h3>🧠 Analysis Mission</h3>
+                            <p>Analyze complex quantum concepts</p>
                         </div>
-                        <div class="suggestion-card" onclick="triggerSuggestion('AI healthcare startup landscape')">
-                            <strong>BioTech analysis</strong>
-                            <span>Get reports on AlphaFold and medical approvals</span>
+                        <div class="mission-card" onclick="triggerSuggestion('What is the current AI healthcare startup landscape?')">
+                            <h3>📊 BioTech Survey</h3>
+                            <p>Analyze market data and approvals</p>
                         </div>
                     </div>
                 </div>
@@ -802,16 +883,84 @@ html_content = """\n<!DOCTYPE html>
             </div>
         </div>
         
-        <!-- Sticky Bottom Input Dock -->
         <div class="input-panel">
             <div class="input-dock">
-                <textarea id="prompt" placeholder="Message Nexus..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
-                <button class="send-btn" onclick="sendMessage()" id="send-btn">
-                    <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                </button>
+                <div class="input-top-bar">✦ Give Nexus a command</div>
+                <div class="input-row">
+                    <textarea id="prompt" placeholder="Type your command..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
+                    <button class="send-btn" onclick="sendMessage()" id="send-btn">
+                        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT MISSION CONTROL -->
+    <div class="sidebar-right">
+        <div class="mc-header">Mission Control</div>
+        
+        <div class="mc-section">
+            <div class="mc-title">Agent Network</div>
+            
+            <div class="agent-card active" id="card-nexus">
+                <div class="agent-icon" style="color: var(--accent-primary)">◉</div>
+                <div class="agent-info">
+                    <div class="agent-name">Nexus Core</div>
+                    <div class="agent-role">Orchestrator</div>
+                </div>
+                <div class="agent-status-dot"></div>
+            </div>
+            
+            <div class="agent-card" id="card-scout">
+                <div class="agent-icon" style="color: var(--accent-secondary)">🔍</div>
+                <div class="agent-info">
+                    <div class="agent-name">Scout</div>
+                    <div class="agent-role">Research</div>
+                </div>
+                <div class="agent-status-dot"></div>
+            </div>
+            
+            <div class="agent-card" id="card-oracle">
+                <div class="agent-icon" style="color: var(--text-main)">🧠</div>
+                <div class="agent-info">
+                    <div class="agent-name">Oracle</div>
+                    <div class="agent-role">Analysis</div>
+                </div>
+                <div class="agent-status-dot"></div>
+            </div>
+            
+            <div class="agent-card" id="card-sentinel">
+                <div class="agent-icon" style="color: var(--accent-tertiary)">🛡</div>
+                <div class="agent-info">
+                    <div class="agent-name">Sentinel</div>
+                    <div class="agent-role">Verification</div>
+                </div>
+                <div class="agent-status-dot"></div>
             </div>
         </div>
         
+        <div class="mc-section" style="border:none;">
+            <div class="mc-title">System Health</div>
+            <div class="system-health">
+                <div class="health-row">
+                    <span>Memory Engine</span>
+                    <span class="health-status">Online</span>
+                </div>
+                <div class="health-row">
+                    <span>Tool Access</span>
+                    <span class="health-status">Connected</span>
+                </div>
+                <div class="health-row">
+                    <span>Self-Healing Protocol</span>
+                    <span class="health-status">Active</span>
+                </div>
+                <div class="health-row">
+                    <span>System Load</span>
+                    <span id="system-load" style="color: var(--text-muted)">14%</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 3D Mascot Widget -->
@@ -838,15 +987,14 @@ html_content = """\n<!DOCTYPE html>
         const tx = document.getElementById('prompt');
         tx.addEventListener('input', function() {
             this.style.height = 'auto';
-            this.style.height = (this.scrollHeight - 16) + 'px';
+            this.style.height = (this.scrollHeight) + 'px';
         });
 
-        // Chaos Mode toggle
-        document.getElementById('chaos-toggle').addEventListener('change', function() {
-            isChaosMode = this.checked;
-        });
-
-        // Mascot toggle
+        // Toggles & Settings
+        document.getElementById('chaos-toggle').addEventListener('change', function() { isChaosMode = this.checked; });
+        document.getElementById('tool-select').addEventListener('change', function() { currentForcedTool = this.value; });
+        
+        // Mascot
         const mascotWidget = document.getElementById('mascot-widget');
         const mascotBubble = document.getElementById('mascot-bubble');
         const mascotModel = document.getElementById('mascot-model');
@@ -854,7 +1002,7 @@ html_content = """\n<!DOCTYPE html>
         document.getElementById('mascot-toggle').addEventListener('change', function() {
             if(this.checked) {
                 mascotWidget.style.display = 'flex';
-                speakMascot("Hello! Ready to assist.", 4000);
+                speakMascot("Commander. System is online.", 4000);
             } else {
                 mascotWidget.style.display = 'none';
             }
@@ -863,25 +1011,17 @@ html_content = """\n<!DOCTYPE html>
         function speakMascot(msg, duration) {
             mascotBubble.innerText = msg;
             mascotBubble.classList.add('show');
-            
             if (mascotModel) {
-                const anims = ["Jump", "Wave", "ThumbsUp", "Walk"];
-                const randAnim = anims[Math.floor(Math.random() * anims.length)];
-                mascotModel.setAttribute('animation-name', randAnim);
+                const anims = ["Jump", "Wave", "ThumbsUp"];
+                mascotModel.setAttribute('animation-name', anims[Math.floor(Math.random() * anims.length)]);
             }
-
             setTimeout(() => {
                 mascotBubble.classList.remove('show');
                 if(mascotModel) mascotModel.setAttribute('animation-name', 'Idle');
             }, duration);
         }
 
-        // Forced Tool Select
-        document.getElementById('tool-select').addEventListener('change', function() {
-            currentForcedTool = this.value;
-        });
-
-        // Initialize session on load
+        // Initialize
         window.addEventListener('DOMContentLoaded', async () => {
             const savedSession = localStorage.getItem('nexus_session_id');
             if (savedSession) {
@@ -893,7 +1033,7 @@ html_content = """\n<!DOCTYPE html>
             await loadSessions();
         });
 
-        // Load all active sessions
+        // Sessions Management
         async function loadSessions() {
             try {
                 const res = await fetch('/sessions');
@@ -908,22 +1048,18 @@ html_content = """\n<!DOCTYPE html>
                     div.onclick = () => selectSession(sess.session_id);
                     
                     div.innerHTML = `
-                        <div class="session-title">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             ${sess.title}
                         </div>
                         <button class="session-delete" onclick="event.stopPropagation(); deleteSession('${sess.session_id}')">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     `;
                     container.appendChild(div);
                 });
-            } catch (e) {
-                console.error("Error loading sessions:", e);
-            }
+            } catch (e) { console.error("Error loading sessions", e); }
         }
 
-        // Create New Session
         document.getElementById('new-chat-btn').onclick = startNewSession;
 
         async function startNewSession() {
@@ -932,90 +1068,79 @@ html_content = """\n<!DOCTYPE html>
                 const data = await res.json();
                 SESSION_ID = data.session_id;
                 localStorage.setItem('nexus_session_id', SESSION_ID);
-                
                 clearChat();
                 await loadSessions();
-            } catch (e) {
-                console.error("Error starting session:", e);
-            }
+            } catch (e) { console.error("Error starting session", e); }
         }
 
-        // Select a Session & Load History
         async function selectSession(sessionId) {
             SESSION_ID = sessionId;
             localStorage.setItem('nexus_session_id', SESSION_ID);
-            
             try {
                 const res = await fetch(`/sessions/${sessionId}`);
                 const data = await res.json();
-                
                 clearChat();
-                
                 if (data.history && data.history.length > 0) {
                     document.getElementById('welcome-panel').style.display = 'none';
                     const wrapper = document.getElementById('chat-wrapper');
-                    
                     data.history.forEach(entry => {
-                        // User message
                         const userRow = document.createElement('div');
                         userRow.className = 'message-row user';
                         userRow.innerHTML = `<div class="bubble-content">${entry.task}</div>`;
                         wrapper.appendChild(userRow);
                         
-                        // Agent message
                         const agentRow = document.createElement('div');
                         agentRow.className = 'message-row agent';
                         agentRow.innerHTML = `
-                            <div class="avatar agent-avatar">N</div>
+                            <div class="agent-avatar">◉</div>
                             <div class="bubble-content markdown-body">${marked.parse(entry.answer)}</div>
                         `;
                         wrapper.appendChild(agentRow);
                         addCodeCopyButtons(agentRow);
                     });
                 }
-                
                 await loadSessions();
-            } catch (e) {
-                console.error("Error loading session history:", e);
-            }
+                scrollToBottom();
+            } catch (e) { console.error("Error loading session history", e); }
         }
 
-        // Delete a session
         async function deleteSession(sessionId) {
             try {
                 await fetch(`/sessions/${sessionId}`, { method: 'DELETE' });
-                if (sessionId === SESSION_ID) {
-                    await startNewSession();
-                } else {
-                    await loadSessions();
-                }
-            } catch (e) {
-                console.error("Error deleting session:", e);
-            }
+                if (sessionId === SESSION_ID) await startNewSession();
+                else await loadSessions();
+            } catch (e) { console.error("Error deleting session", e); }
         }
 
         function clearChat() {
             const wrapper = document.getElementById('chat-wrapper');
             wrapper.innerHTML = `
                 <div class="welcome-panel" id="welcome-panel">
-                    <h1>Nexus.AI</h1>
-                    <p>Your self-healing, multi-agent assistant for coding, research, and analysis.</p>
-                    <div class="suggestion-grid">
-                        <div class="suggestion-card" onclick="triggerSuggestion('Find autonomous vehicle news')">
-                            <strong>Research vehicles</strong>
-                            <span>Search Wikipedia for autonomous driving updates</span>
+                    <div class="nexus-core-vis">
+                        <div class="connection-line line-1"></div>
+                        <div class="connection-line line-2"></div>
+                        <div class="connection-line line-3"></div>
+                        <div class="connection-line line-4"></div>
+                        <div class="node scout">S</div>
+                        <div class="node forge">F</div>
+                        <div class="node oracle">O</div>
+                        <div class="node sentinel">V</div>
+                        <div class="core-center"></div>
+                    </div>
+                    <h1><span>NEXUS</span>.AI</h1>
+                    <p>Your Autonomous AI Workspace</p>
+                    <div class="mission-grid">
+                        <div class="mission-card" onclick="triggerSuggestion('Investigate autonomous driving breakthroughs')">
+                            <h3>🔍 Research Mission</h3><p>Investigate autonomous vehicle news</p>
                         </div>
-                        <div class="suggestion-card" onclick="triggerSuggestion('Explain topological qubits')">
-                            <strong>Explain quantum</strong>
-                            <span>Get definitions and physics parameters</span>
+                        <div class="mission-card" onclick="triggerSuggestion('Build a FastAPI AI application')">
+                            <h3>⚒ Build Mission</h3><p>Write an API service architecture</p>
                         </div>
-                        <div class="suggestion-card" onclick="triggerSuggestion('Write a quick Python script to compress files')">
-                            <strong>Write code</strong>
-                            <span>Draft a script to handle rolling compressions</span>
+                        <div class="mission-card" onclick="triggerSuggestion('Explain topological qubits and quantum entanglement')">
+                            <h3>🧠 Analysis Mission</h3><p>Analyze complex quantum concepts</p>
                         </div>
-                        <div class="suggestion-card" onclick="triggerSuggestion('AI healthcare startup landscape')">
-                            <strong>BioTech analysis</strong>
-                            <span>Get reports on AlphaFold and medical approvals</span>
+                        <div class="mission-card" onclick="triggerSuggestion('What is the current AI healthcare startup landscape?')">
+                            <h3>📊 BioTech Survey</h3><p>Analyze market data and approvals</p>
                         </div>
                     </div>
                 </div>
@@ -1033,154 +1158,154 @@ html_content = """\n<!DOCTYPE html>
                 sendMessage();
             }
         }
+        
+        function scrollToBottom() {
+            const chatArea = document.getElementById('chat-area');
+            chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
+        }
+        
+        // Agent UI Activity Toggler
+        function updateAgentActivity(logText) {
+            document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+            document.getElementById('card-nexus').classList.add('active'); // Always active
+            
+            const lowerLog = logText.toLowerCase();
+            
+            if (lowerLog.includes('scout') || lowerLog.includes('search') || lowerLog.includes('retrieving')) {
+                document.getElementById('card-scout').classList.add('active');
+                document.getElementById('system-load').innerText = "42%";
+            }
+            if (lowerLog.includes('critic') || lowerLog.includes('verify') || lowerLog.includes('check')) {
+                document.getElementById('card-sentinel').classList.add('active');
+                document.getElementById('system-load').innerText = "67%";
+            }
+            if (lowerLog.includes('lead') || lowerLog.includes('think') || lowerLog.includes('analyzing')) {
+                document.getElementById('card-oracle').classList.add('active');
+                document.getElementById('system-load').innerText = "89%";
+            }
+            
+            // Self healing UI trigger
+            if (lowerLog.includes('error') || lowerLog.includes('fail') || lowerLog.includes('retry') || lowerLog.includes('rotating') || lowerLog.includes('quota')) {
+                const sysHealth = document.querySelectorAll('.health-status');
+                sysHealth[2].innerText = "Recovering...";
+                sysHealth[2].style.color = "orange";
+                setTimeout(() => {
+                    sysHealth[2].innerText = "Active";
+                    sysHealth[2].style.color = "var(--accent-primary)";
+                }, 3000);
+            }
+        }
 
-        // Stream and Send Logic
         async function sendMessage() {
             if (isGenerating) return;
             
-            const promptArea = document.getElementById('prompt');
-            const text = promptArea.value.trim();
+            const promptEl = document.getElementById('prompt');
+            const text = promptEl.value.trim();
             if (!text) return;
             
-            promptArea.value = '';
-            promptArea.style.height = 'auto';
-            
-            const welcome = document.getElementById('welcome-panel');
-            if (welcome) welcome.style.display = 'none';
-            
+            promptEl.value = '';
+            promptEl.style.height = 'auto';
             isGenerating = true;
+            document.getElementById('send-btn').style.opacity = '0.5';
+            document.getElementById('welcome-panel').style.display = 'none';
+            document.getElementById('system-load').innerText = "31%";
             
             const wrapper = document.getElementById('chat-wrapper');
+            
+            // Append User Message
             const userRow = document.createElement('div');
             userRow.className = 'message-row user';
             userRow.innerHTML = `<div class="bubble-content">${text}</div>`;
             wrapper.appendChild(userRow);
             
+            // Append Agent Container
             const agentRow = document.createElement('div');
             agentRow.className = 'message-row agent';
-            
-            const agentAvatar = document.createElement('div');
-            agentAvatar.className = 'avatar agent-avatar';
-            agentAvatar.innerText = 'N';
-            
-            const agentContent = document.createElement('div');
-            agentContent.className = 'bubble-content';
-            
-            // Accordion thought panel
-            const thoughtAccordion = document.createElement('details');
-            thoughtAccordion.className = 'thought-accordion';
-            thoughtAccordion.setAttribute('open', '');
-            
-            const thoughtSummary = document.createElement('summary');
-            thoughtSummary.innerText = 'Thinking Process';
-            
-            const thoughtContent = document.createElement('div');
-            thoughtContent.className = 'reasoning-content';
-            
-            thoughtAccordion.appendChild(thoughtSummary);
-            thoughtAccordion.appendChild(thoughtContent);
-            
-            const finalAnswerBox = document.createElement('div');
-            finalAnswerBox.className = 'markdown-body';
-            
-            agentContent.appendChild(thoughtAccordion);
-            agentContent.appendChild(finalAnswerBox);
-            
-            agentRow.appendChild(agentAvatar);
-            agentRow.appendChild(agentContent);
-            
+            agentRow.innerHTML = `
+                <div class="agent-avatar">◉</div>
+                <div class="bubble-content">
+                    <details class="thought-accordion" open>
+                        <summary>SYSTEM CONSOLE</summary>
+                        <div class="reasoning-content"></div>
+                    </details>
+                    <div class="markdown-body" style="display:none;"></div>
+                </div>
+            `;
             wrapper.appendChild(agentRow);
             scrollToBottom();
             
-            if(document.getElementById('mascot-toggle').checked) {
-                speakMascot("Thinking and referencing databases...", 4000);
-            }
-
-            try {
-                const selectedModel = document.getElementById('model-select').value;
-                let url = '/stream?task=' + encodeURIComponent(text) + '&session_id=' + SESSION_ID + '&model=' + encodeURIComponent(selectedModel);
-                if (currentForcedTool) url += '&force_tool=' + encodeURIComponent(currentForcedTool);
-                if (isChaosMode) url += '&chaos_mode=true';
+            const reasoningContainer = agentRow.querySelector('.reasoning-content');
+            const markdownContainer = agentRow.querySelector('.markdown-body');
+            const accordion = agentRow.querySelector('.thought-accordion');
+            
+            const modelEl = document.getElementById('model-select');
+            const selectedModel = modelEl ? modelEl.value : "gemini-3.6-flash";
+            
+            const params = new URLSearchParams({
+                task: text,
+                session_id: SESSION_ID,
+                model: selectedModel,
+                chaos_mode: isChaosMode
+            });
+            if (currentForcedTool) params.append('force_tool', currentForcedTool);
+            
+            const evtSource = new EventSource(`/stream?${params.toString()}`);
+            
+            evtSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
                 
-                const response = await fetch(url);
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let logText = "";
-                let isThoughtOpen = true;
-                
-                let buffer = "";
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\\n');
-                    buffer = lines.pop(); // keep last incomplete line
-                    
-                    for (const line of lines) {
-                        const trimmed = line.trim();
-                        if (trimmed.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(trimmed.substring(6));
-                                if (data.type === 'log') {
-                                    logText += data.text + "\\n";
-                                    thoughtContent.innerText = logText;
-                                    thoughtContent.scrollTop = thoughtContent.scrollHeight;
-                                    scrollToBottom();
-                                } else if (data.type === 'memory') {
-                                    const memCore = document.getElementById('memory-core');
-                                    const memText = document.getElementById('memory-text');
-                                    memCore.classList.add('active');
-                                    memText.innerText = "ACTIVE: " + data.text.toUpperCase();
-                                    setTimeout(() => { memCore.classList.remove('active'); }, 5000);
-                                } else if (data.type === 'answer') {
-                                    if (isThoughtOpen) {
-                                        thoughtAccordion.removeAttribute('open');
-                                        isThoughtOpen = false;
-                                    }
-                                    finalAnswerBox.innerHTML = marked.parse(data.text);
-                                    addCodeCopyButtons(finalAnswerBox);
-                                    scrollToBottom();
-                                }
-                            } catch (parseError) {
-                                console.warn("Failed to parse JSON line:", trimmed, parseError);
-                            }
-                        }
-                    }
+                if (data.type === "log") {
+                    reasoningContainer.textContent += data.text + "\\n";
+                    updateAgentActivity(data.text);
+                    scrollToBottom();
+                } 
+                else if (data.type === "memory") {
+                    document.getElementById('memory-core').classList.add('active');
+                    setTimeout(() => { document.getElementById('memory-core').classList.remove('active'); }, 4000);
                 }
-                
-                if(document.getElementById('mascot-toggle').checked) {
-                    speakMascot("Completed! Strategic report generated.", 3000);
+                else if (data.type === "answer") {
+                    accordion.removeAttribute('open');
+                    markdownContainer.style.display = 'block';
+                    markdownContainer.innerHTML = marked.parse(data.text);
+                    addCodeCopyButtons(agentRow);
+                    scrollToBottom();
+                    evtSource.close();
+                    
+                    isGenerating = false;
+                    document.getElementById('send-btn').style.opacity = '1';
+                    document.getElementById('system-load').innerText = "14%";
+                    loadSessions();
+                    
+                    // Reset agents
+                    setTimeout(() => {
+                        document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+                        document.getElementById('card-nexus').classList.add('active');
+                    }, 2000);
                 }
-            } catch (e) {
-                thoughtContent.innerText += "\\n[CRITICAL FAILURE] Interface connection interrupted: " + e;
-            } finally {
+            };
+            
+            evtSource.onerror = function() {
+                reasoningContainer.textContent += "\\n\\n[CONNECTION ERROR OR STREAM ENDED]\\n";
+                evtSource.close();
                 isGenerating = false;
-                await loadSessions();
-            }
-        }
-
-        function scrollToBottom() {
-            const chatArea = document.getElementById('chat-area');
-            chatArea.scrollTop = chatArea.scrollHeight;
+                document.getElementById('send-btn').style.opacity = '1';
+                document.getElementById('system-load').innerText = "14%";
+            };
         }
 
         function addCodeCopyButtons(container) {
-            const blocks = container.querySelectorAll('pre');
-            blocks.forEach(block => {
-                if (block.querySelector('.copy-btn')) return;
-                
+            container.querySelectorAll('pre').forEach(pre => {
+                if (pre.querySelector('.copy-btn')) return;
                 const btn = document.createElement('button');
                 btn.className = 'copy-btn';
                 btn.innerText = 'Copy';
                 btn.onclick = () => {
-                    const code = block.querySelector('code').innerText;
-                    navigator.clipboard.writeText(code).then(() => {
-                        btn.innerText = 'Copied!';
-                        setTimeout(() => { btn.innerText = 'Copy'; }, 2000);
-                    });
+                    const code = pre.querySelector('code').innerText;
+                    navigator.clipboard.writeText(code);
+                    btn.innerText = 'Copied!';
+                    setTimeout(() => btn.innerText = 'Copy', 2000);
                 };
-                block.appendChild(btn);
+                pre.appendChild(btn);
             });
         }
         
@@ -1189,7 +1314,7 @@ html_content = """\n<!DOCTYPE html>
     function playWelcome() {
         if (voicePlayed) return;
         voicePlayed = true;
-        let msg = new SpeechSynthesisUtterance("Hello, welcome to Nexus AI.");
+        let msg = new SpeechSynthesisUtterance("Commander. Welcome to Nexus AI Command Center.");
         msg.rate = 0.95;
         msg.pitch = 1.0;
         
@@ -1202,8 +1327,8 @@ html_content = """\n<!DOCTYPE html>
     // Autoplay is blocked by modern browsers, so we MUST play on first user interaction
     document.body.addEventListener('click', playWelcome, {once: true});
     document.body.addEventListener('keydown', playWelcome, {once: true});
-    
-</script>
+
+    </script>
 </body>
 </html>\n"""
 
