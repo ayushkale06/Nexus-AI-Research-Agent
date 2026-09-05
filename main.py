@@ -805,6 +805,40 @@ html_content = """\n<!DOCTYPE html>
         }
         .mascot-bubble.show { opacity: 1; }
 
+    
+        /* Mission Feed */
+        .mission-feed {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #000; border-top: 1px solid var(--accent-primary);
+            color: var(--accent-primary); font-family: var(--font-mono); font-size: 10px;
+            padding: 4px 0; overflow: hidden; z-index: 100;
+        }
+        .feed-content {
+            white-space: nowrap; animation: scrollFeed 30s linear infinite;
+        }
+        @keyframes scrollFeed { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+
+        /* Hacker Terminal */
+        #hacker-terminal {
+            position: fixed; right: 340px; bottom: 40px;
+            width: 350px; height: 250px;
+            background: rgba(0, 20, 0, 0.9);
+            border: 1px solid #0f0; border-radius: 4px;
+            flex-direction: column; z-index: 90;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+        .term-header {
+            background: #0f0; color: #000;
+            font-family: var(--font-mono); font-size: 10px; font-weight: bold;
+            padding: 4px 8px; text-transform: uppercase;
+        }
+        .term-body {
+            flex: 1; overflow-y: auto;
+            color: #0f0; font-family: var(--font-mono); font-size: 10px;
+            padding: 8px; white-space: pre-wrap; word-wrap: break-word;
+        }
+
     </style>
 </head>
 <body>
@@ -833,6 +867,14 @@ html_content = """\n<!DOCTYPE html>
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            
+            <div class="settings-row">
+                <span>Hacker Terminal</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="term-toggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
             <div class="settings-row">
                 <span>Show Mascot</span>
                 <label class="toggle-switch">
@@ -847,6 +889,7 @@ html_content = """\n<!DOCTYPE html>
                     <option value="wiki_search">Wikipedia</option>
                     <option value="arxiv_search">ArXiv</option>
                     <option value="github_search">GitHub</option>
+                    <option value="web_scraper">Web Scraper (Live)</option>
                 </select>
             </div>
             <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px;">
@@ -1000,6 +1043,24 @@ html_content = """\n<!DOCTYPE html>
         </div>
     </div>
 
+    
+    <!-- HACKER TERMINAL -->
+    <div id="hacker-terminal" style="display: none;">
+        <div class="term-header">RAW PAYLOAD STREAM</div>
+        <div class="term-body" id="term-body">Awaiting connection...</div>
+    </div>
+
+    <!-- MISSION FEED TICKER -->
+    <div class="mission-feed">
+        <div class="feed-content" id="feed-content">
+            [LIVE] Agent Oracle compiling generative dataset in Tokyo... &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 
+            [LIVE] Scout navigating ArXiv repositories... &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 
+            [ALERT] Security Sentinel blocked unauthorized payload... &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+            [LIVE] Forge synthesizing React components... &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+            [LIVE] Global Network Status: OPTIMAL
+        </div>
+    </div>
+
     <!-- 3D Mascot Widget -->
     <div id="mascot-widget">
         <div class="mascot-bubble" id="mascot-bubble">Awaiting your command, Commander.</div>
@@ -1019,6 +1080,36 @@ html_content = """\n<!DOCTYPE html>
         let isChaosMode = false;
         let currentForcedTool = "";
         let isGenerating = false;
+
+        document.getElementById('term-toggle').addEventListener('change', function() {
+            document.getElementById('hacker-terminal').style.display = this.checked ? 'flex' : 'none';
+        });
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            if (type === 'click') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'receive') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(1500, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) playSound('click');
+        });
+
 
         
         mermaid.initialize({ startOnLoad: false, theme: 'dark' });
@@ -1321,6 +1412,13 @@ html_content = """\n<!DOCTYPE html>
             const evtSource = new EventSource(`/stream?${params.toString()}`);
             
             evtSource.onmessage = function(event) {
+                const termBody = document.getElementById('term-body');
+                if(termBody && event.data) {
+                    termBody.innerText += "\n> " + event.data;
+                    termBody.scrollTop = termBody.scrollHeight;
+                }
+                playSound('receive');
+
                 const data = JSON.parse(event.data);
                 
                 if (data.type === "log") {

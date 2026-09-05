@@ -4,6 +4,26 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import json
 
+
+import re
+def web_scraper(url: str) -> str:
+    \"\"\"Scrapes raw text content from a given live website URL.\"\"\"
+    if not url.startswith('http'):
+        url = 'https://' + url
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = urllib.request.urlopen(req, timeout=5)
+        html = response.read().decode('utf-8', errors='ignore')
+        
+        text = re.sub(r'<style.*?>.*?</style>', '', html, flags=re.DOTALL|re.IGNORECASE)
+        text = re.sub(r'<script.*?>.*?</script>', '', text, flags=re.DOTALL|re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        return f"Content from {url}:\n{text[:4000]}..." 
+    except Exception as e:
+        return f"Error scraping {url}: {str(e)}"
+
 def wiki_search(query: str) -> str:
     """Searches Wikipedia for company information, research, and general knowledge."""
     try:
@@ -68,5 +88,6 @@ def github_search(query: str) -> str:
 AVAILABLE_TOOLS = {
     "wiki_search": wiki_search,
     "arxiv_search": arxiv_search,
-    "github_search": github_search
+    "github_search": github_search,
+    "web_scraper": web_scraper
 }
