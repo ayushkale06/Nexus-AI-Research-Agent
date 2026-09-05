@@ -1120,16 +1120,45 @@ html_content = """\n<!DOCTYPE html>
             recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.interimResults = false;
-            recognition.onstart = () => document.getElementById('mic-btn').classList.add('listening');
-            recognition.onend = () => document.getElementById('mic-btn').classList.remove('listening');
+            recognition.lang = 'en-US'; // Force language
+            
+            recognition.onstart = () => {
+                const btn = document.getElementById('mic-btn');
+                btn.classList.add('listening');
+                btn.style.color = '#f85149'; // Turn red to indicate recording
+            };
+            
+            recognition.onend = () => {
+                const btn = document.getElementById('mic-btn');
+                btn.classList.remove('listening');
+                btn.style.color = 'var(--text-muted)'; // Reset color
+            };
+            
             recognition.onresult = (e) => {
-                document.getElementById('prompt').value = e.results[0][0].transcript;
-                sendMessage();
+                if (e.results && e.results[0] && e.results[0][0]) {
+                    const transcript = e.results[0][0].transcript;
+                    document.getElementById('prompt').value = transcript;
+                    sendMessage();
+                }
+            };
+            
+            recognition.onerror = (e) => {
+                console.error("Speech Recognition Error:", e.error);
+                if (e.error === 'no-speech') alert("Nexus: No speech detected. Please check if your microphone is muted.");
+                else if (e.error === 'audio-capture') alert("Nexus: No microphone hardware found.");
+                else if (e.error === 'not-allowed') alert("Nexus: Microphone permission was denied by your browser.");
             };
         }
+        
         function startDictation() {
-            if(recognition) recognition.start();
-            else alert("Voice recognition not supported in this browser.");
+            if(recognition) {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    console.log("Recognition already started or error:", e);
+                }
+            }
+            else alert("Voice recognition is not supported in this browser (Use Chrome or Edge).");
         }
         
         function downloadReport(text) {
