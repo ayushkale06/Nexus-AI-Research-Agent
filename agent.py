@@ -381,14 +381,29 @@ class MultiAgentTeam:
     def generate_content(self, messages: list) -> str:
         if self.model_name.startswith("groq/") or self.model_name.startswith("huggingface/"):
             oai_messages = []
+            system_text = ""
             for msg in messages:
                 role = msg["role"]
                 if role == "model": role = "assistant"
+                
                 if "parts" in msg:
                     content = "\n".join([p["text"] for p in msg["parts"]])
                 else:
                     content = msg.get("content", "")
+                    
+                if role == "system":
+                    system_text += content + "\n\n"
+                    continue
+                
+                if role == "user" and system_text:
+                    content = system_text + content
+                    system_text = ""
+                    
                 oai_messages.append({"role": role, "content": content})
+                
+            if system_text:
+                # If there were only system messages (rare), append as user
+                oai_messages.append({"role": "user", "content": system_text})
             
             import requests
             
@@ -415,7 +430,8 @@ class MultiAgentTeam:
                 "temperature": 0.1
             }
             res = requests.post(url, headers=headers, json=data)
-            res.raise_for_status()
+            if res.status_code != 200:
+                raise ValueError(f"HTTP {res.status_code}: {res.text}")
             return res.json()["choices"][0]["message"]["content"]
         else:
             response = self.client.models.generate_content(model=self.model_name, contents=messages)
