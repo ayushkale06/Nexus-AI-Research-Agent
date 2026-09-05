@@ -177,6 +177,7 @@ class ResearcherAgent:
                         time.sleep(2) # Give it a moment if it returned empty
                 except Exception as e:
                     print(f"DEBUG - LLM Exception: {e}")
+                    yield "log", f"⚠️ API Error Details: {str(e)}"
                     if "403" in str(e) or "429" in str(e) or "400" in str(e) or "RESOURCE_EXHAUSTED" in str(e) or "PERMISSION_DENIED" in str(e) or "INVALID_ARGUMENT" in str(e) or "API_KEY_INVALID" in str(e):
                         if hasattr(self.team, "rotate_key"):
                             yield "log", f"[Agent-Scout] Quota limit/error on current key. Attempting key rotation..."
@@ -405,14 +406,13 @@ class MultiAgentTeam:
                 url = f"https://api-inference.huggingface.co/models/{model_id}/v1/chat/completions"
             
             headers = {
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {api_key.strip()}",
                 "Content-Type": "application/json"
             }
             data = {
                 "model": model_id,
                 "messages": oai_messages,
-                "temperature": 0.1,
-                "max_tokens": 1500
+                "temperature": 0.1
             }
             res = requests.post(url, headers=headers, json=data)
             res.raise_for_status()
