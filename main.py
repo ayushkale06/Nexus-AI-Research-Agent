@@ -1414,7 +1414,7 @@ html_content = """\n<!DOCTYPE html>
             evtSource.onmessage = function(event) {
                 const termBody = document.getElementById('term-body');
                 if(termBody && event.data) {
-                    termBody.innerText += "\n> " + event.data;
+                    termBody.innerText += "\\n> " + event.data;
                     termBody.scrollTop = termBody.scrollHeight;
                 }
                 playSound('receive');
