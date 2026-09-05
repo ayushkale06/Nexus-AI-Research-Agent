@@ -1183,7 +1183,27 @@ html_content = """\n<!DOCTYPE html>
                 block.appendChild(btn);
             });
         }
-    </script>
+        
+    // Welcome Voice Greeting
+    let voicePlayed = false;
+    function playWelcome() {
+        if (voicePlayed) return;
+        voicePlayed = true;
+        let msg = new SpeechSynthesisUtterance("Hello, welcome to Nexus AI.");
+        msg.rate = 0.95;
+        msg.pitch = 1.0;
+        window.speechSynthesis.speak(msg);
+    }
+    
+    // Attempt to play on load (may be blocked by browser autoplay policies)
+    window.addEventListener('load', () => {
+        setTimeout(playWelcome, 1000);
+    });
+    
+    // Fallback: play on first click if autoplay was blocked
+    document.body.addEventListener('click', playWelcome, {once: true});
+    
+</script>
 </body>
 </html>\n"""
 
