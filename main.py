@@ -18,6 +18,7 @@ html_content = """\n<!DOCTYPE html>
     <title>NEXUS.AI | Command Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
         :root {
@@ -556,7 +557,40 @@ html_content = """\n<!DOCTYPE html>
         }
         .copy-btn:hover { background: rgba(255,255,255,0.1); color: white; }
 
-        /* --- Chat Input Dock --- */
+        
+        .mic-btn {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s;
+            margin-bottom: 2px;
+        }
+        .mic-btn:hover, .mic-btn.listening {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            box-shadow: var(--glow-primary);
+        }
+        .mic-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        
+        .export-btn {
+            margin-top: 16px;
+            background: rgba(0, 200, 255, 0.1);
+            border: 1px solid var(--accent-secondary);
+            color: var(--accent-secondary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px; font-family: var(--font-mono);
+            cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .export-btn:hover {
+            background: rgba(0, 200, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0,200,255,0.3);
+        }
+/* --- Chat Input Dock --- */
         .input-panel {
             padding: 24px 32px 32px;
             background: linear-gradient(to top, var(--bg-base) 70%, transparent);
@@ -888,6 +922,9 @@ html_content = """\n<!DOCTYPE html>
                 <div class="input-top-bar">✦ Give Nexus a command</div>
                 <div class="input-row">
                     <textarea id="prompt" placeholder="Type your command..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
+                    <button class="mic-btn" onclick="startDictation()" id="mic-btn" title="Voice Command">
+                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                    </button>
                     <button class="send-btn" onclick="sendMessage()" id="send-btn">
                         <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>
@@ -983,7 +1020,39 @@ html_content = """\n<!DOCTYPE html>
         let currentForcedTool = "";
         let isGenerating = false;
 
+        
+        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.onstart = () => document.getElementById('mic-btn').classList.add('listening');
+            recognition.onend = () => document.getElementById('mic-btn').classList.remove('listening');
+            recognition.onresult = (e) => {
+                document.getElementById('prompt').value = e.results[0][0].transcript;
+                sendMessage();
+            };
+        }
+        function startDictation() {
+            if(recognition) recognition.start();
+            else alert("Voice recognition not supported in this browser.");
+        }
+        
+        function downloadReport(text) {
+            const blob = new Blob([text], {type: "text/markdown"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Nexus_Mission_Report.md";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         // Auto-growing textarea
+
         const tx = document.getElementById('prompt');
         tx.addEventListener('input', function() {
             this.style.height = 'auto';
@@ -1093,7 +1162,7 @@ html_content = """\n<!DOCTYPE html>
                         agentRow.className = 'message-row agent';
                         agentRow.innerHTML = `
                             <div class="agent-avatar">◉</div>
-                            <div class="bubble-content markdown-body">${marked.parse(entry.answer)}</div>
+                            <div class="bubble-content markdown-body">${marked.parse(entry.answer).replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g, '<div class="mermaid">$1</div>')}</div>
                         `;
                         wrapper.appendChild(agentRow);
                         addCodeCopyButtons(agentRow);
@@ -1266,9 +1335,24 @@ html_content = """\n<!DOCTYPE html>
                 else if (data.type === "answer") {
                     accordion.removeAttribute('open');
                     markdownContainer.style.display = 'block';
-                    markdownContainer.innerHTML = marked.parse(data.text);
+                    
+                    let htmlContent = marked.parse(data.text);
+                    htmlContent = htmlContent.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g, '<div class="mermaid">$1</div>');
+                    markdownContainer.innerHTML = htmlContent;
+                    
+                    const exportBtn = document.createElement('button');
+                    exportBtn.className = 'export-btn';
+                    exportBtn.innerHTML = '📥 Export Mission Report';
+                    exportBtn.onclick = () => downloadReport(data.text);
+                    markdownContainer.appendChild(exportBtn);
+                    
                     addCodeCopyButtons(agentRow);
-                    scrollToBottom();
+                    
+                    setTimeout(() => {
+                        try { mermaid.run({ querySelector: '.mermaid' }); } catch(e) { console.error(e); }
+                        scrollToBottom();
+                    }, 100);
+                    
                     evtSource.close();
                     
                     isGenerating = false;
