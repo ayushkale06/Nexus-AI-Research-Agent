@@ -7,7 +7,7 @@ import json
 
 import re
 def web_scraper(url: str) -> str:
-    \"\"\"Scrapes raw text content from a given live website URL.\"\"\"
+    """Scrapes raw text content from a given live website URL."""
     if not url.startswith('http'):
         url = 'https://' + url
     try:
