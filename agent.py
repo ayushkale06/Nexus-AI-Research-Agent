@@ -181,7 +181,7 @@ class ResearcherAgent:
                     if "403" in str(e) or "429" in str(e) or "400" in str(e) or "RESOURCE_EXHAUSTED" in str(e) or "PERMISSION_DENIED" in str(e) or "INVALID_ARGUMENT" in str(e) or "API_KEY_INVALID" in str(e):
                         if hasattr(self.team, "rotate_key"):
                             yield "log", f"[Agent-Scout] Quota limit/error on current key. Attempting key rotation..."
-                            if self.team.rotate_key():
+                            if self.team.rotate_key(for_groq=self.model_name.startswith('groq/')):
                                 yield "log", f"[Agent-Scout] Key rotated successfully to key {self.team.current_key_idx + 1}. Retrying request..."
                                 time.sleep(1)
                                 continue
@@ -364,19 +364,27 @@ class MultiAgentTeam:
         
         # TASK 4: Initialize Memory Management
         self.memory_manager = MemoryManager(self, self.model_name)
-
-    def rotate_key(self) -> bool:
-        if len(self.api_keys) <= 1:
-            return False
         
-        self.tried_keys_count += 1
-        if self.tried_keys_count >= len(self.api_keys):
-            return False
-            
-        self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
-        self.api_key = self.api_keys[self.current_key_idx]
-        self.client = genai.Client(api_key=self.api_key)
-        return True
+        groq_keys_str = os.environ.get("GROQ_API_KEY", "")
+        self.groq_keys = [k.strip() for k in groq_keys_str.split(",") if k.strip()]
+        self.current_groq_idx = 0
+
+    def rotate_key(self, for_groq=False) -> bool:
+        if for_groq:
+            if not self.groq_keys or len(self.groq_keys) <= 1:
+                return False
+            self.current_groq_idx = (self.current_groq_idx + 1) % len(self.groq_keys)
+            return True
+        else:
+            if not self.api_keys or len(self.api_keys) <= 1:
+                return False
+            self.tried_keys_count += 1
+            if self.tried_keys_count >= len(self.api_keys):
+                return False
+            self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
+            self.api_key = self.api_keys[self.current_key_idx]
+            self.client = genai.Client(api_key=self.api_key)
+            return True
 
     def generate_content(self, messages: list) -> str:
         if self.model_name.startswith("groq/") or self.model_name.startswith("huggingface/"):
